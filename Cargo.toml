@@ -1,5 +1,5 @@
 [package]
-name = "bevy-msdf-text"
+name = "bevy-sdf-text"
 version = "0.1.0"
 edition = "2021"
 description = "Multi-Channel Signed Distance Field Rendering for Bevy"
@@ -12,6 +12,8 @@ bevy = { version = "0.11.0", default-features = false, features = ["bevy_core_pi
 glyph_brush_layout = "0.2.1"
 msdfgen = { version = "0.2.1", default-features = false, features = ["ttf-parser", "png"] }
 ttf-parser = "0.18.1"
+thiserror = "1.0.44"
 
 [dev-dependencies]
 bevy = { version = "0.11.0", default-features = false, features = ["bevy_winit", "x11", "zstd"] }
+bevy_panorbit_camera = { version = "0.6.0", features = ["bevy_egui"] }

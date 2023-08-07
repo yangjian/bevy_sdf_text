@@ -23,14 +23,14 @@ impl Default for PlaneWithUV {
 impl From<PlaneWithUV> for Mesh {
     fn from(plane: PlaneWithUV) -> Self {
         let (min_x, max_x) = (-0.5 * plane.size[0], 0.5 * plane.size[0]);
-        let (min_z, max_z) = (-0.5 * plane.size[1], 0.5 * plane.size[1]);
+        let (min_y, max_y) = (-0.5 * plane.size[1], 0.5 * plane.size[1]);
         let up = Vec3::Y.to_array();
 
         let positions: Vec<[f32; 3]> = vec![
-            [min_x, 0.0, min_z],
-            [max_x, 0.0, min_z],
-            [max_x, 0.0, max_z],
-            [min_x, 0.0, max_z],
+            [min_x, min_y, 0.0],
+            [max_x, min_y, 0.0],
+            [max_x, max_y, 0.0],
+            [min_x, max_y, 0.0],
         ];
         let uvs: Vec<[f32; 2]> = vec![
             [plane.p00_uv[0], plane.p00_uv[1]],
@@ -39,7 +39,7 @@ impl From<PlaneWithUV> for Mesh {
             [plane.p00_uv[0], plane.p11_uv[1]],
         ];
         let normals: Vec<[f32; 3]> = vec![up, up, up, up];
-        let indices: Vec<u16> = vec![0, 2, 1, 0, 3, 2];
+        let indices: Vec<u16> = vec![0, 1, 2, 0, 2, 3];
 
         let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
         mesh.set_indices(Some(Indices::U16(indices)));
