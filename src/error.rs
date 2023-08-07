@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Debug, PartialEq, Eq, Error)]
-pub enum MtsdfTextError {
+pub enum SdfTextError {
     #[error("font not found")]
     NoSuchFont,
 

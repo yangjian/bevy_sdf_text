@@ -1,12 +1,11 @@
 use ab_glyph::{Font, FontArc, PxScale, PxScaleFont, ScaleFont};
-use anyhow::Result;
 use bevy::prelude::{Rect, Vec2};
 use glyph_brush_layout::{
     BuiltInLineBreaker, FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry,
     SectionGlyph, SectionText, VerticalAlign,
 };
 
-use super::GlyphMetrics;
+use crate::GlyphMetrics;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum TextAlignment {
@@ -70,7 +69,7 @@ pub struct LayoutInput {
     pub sections: Vec<LayoutTextSection>,
 
     pub h_alignment: Option<TextAlignment>,
-    pub v_alignment: Option<TextAlignment>, // NOT supported yet
+    pub v_alignment: Option<TextAlignment>,
     pub bounds: Option<(f32, f32)>,
 }
 
@@ -81,12 +80,9 @@ impl LayoutInput {
     }
 
     fn as_layout(&self) -> Layout<BuiltInLineBreaker> {
-        let mut layout = Layout::default_wrap();
+        let mut layout = Layout::default_wrap().v_align(VerticalAlign::Bottom);
         if let Some(o) = self.h_alignment {
             layout = layout.h_align(o.into());
-        }
-        if let Some(o) = self.v_alignment {
-            layout = layout.v_align(o.into());
         }
         layout
     }
@@ -102,7 +98,8 @@ impl LayoutInput {
 #[derive(Clone, Debug)]
 pub struct PositionedSection {
     pub index: usize,
-    pub ascent_descent: (f32, f32),
+    pub ascent: f32,
+    pub descent: f32,
     pub bbox: Rect,
     pub glyphs: Vec<PositionedGlyph>,
 }
@@ -114,7 +111,25 @@ pub struct PositionedGlyph {
     pub bbox: Rect,
 }
 
-#[derive(Clone, Debug)]
+impl PositionedGlyph {
+    pub fn bbox_with_margin(&self, ratio: [f32; 2]) -> Rect {
+        let center = self.bbox.center();
+        let width = self.bbox.width() * (1.0 + ratio[0]);
+        let height = self.bbox.height() * (1.0 + ratio[1]);
+        Rect {
+            min: Vec2 {
+                x: center.x - width * 0.5,
+                y: center.y - height * 0.5,
+            },
+            max: Vec2 {
+                x: center.x + width * 0.5,
+                y: center.y + height * 0.5,
+            },
+        }
+    }
+}
+
+#[derive(Clone, Default, Debug)]
 pub struct LayoutOutput {
     pub bbox: Rect,
     pub sections: Vec<PositionedSection>,
@@ -129,34 +144,152 @@ impl LayoutOutput {
 }
 
 #[derive(Clone, Debug)]
-struct RawSectionGlyphs {
+struct InnerOutput {
+    v_alignment: Option<TextAlignment>,
+    lines: Vec<InnerLine>,
+    sections: Vec<InnerSectionGlyphs>,
+}
+
+impl InnerOutput {
+    fn new(input: &LayoutInput) -> Self {
+        let glyphs = {
+            let mut sections: Vec<SectionText> = Vec::with_capacity(input.sections.len());
+
+            for section in input.sections.iter() {
+                let font_index = section.style.font_index;
+                let scale = PxScale::from(section.style.font_size);
+                sections.push(SectionText {
+                    text: &section.value,
+                    font_id: FontId(font_index),
+                    scale,
+                });
+            }
+
+            let layout = input.as_layout();
+            let geometry = input.as_geometry();
+            layout.calculate_glyphs(&input.fonts, &geometry, &sections)
+        };
+
+        let (lines, sections) = {
+            let mut lines: Vec<InnerLine> = Vec::new();
+            let mut sections: Vec<InnerSectionGlyphs> = Vec::new();
+
+            for glyph in glyphs.into_iter() {
+                let section_index = glyph.section_index;
+                let baseline = glyph.glyph.position.y;
+
+                let position = glyph.glyph.position;
+                if baseline == lines.last().map_or(f32::INFINITY, |o| o.baseline) {
+                    let line = lines.last_mut().unwrap();
+                    if line.sections.last().unwrap() != &section_index {
+                        line.sections.push(section_index);
+                    }
+                } else {
+                    lines.push(InnerLine {
+                        baseline: position.y,
+                        sections: vec![section_index],
+                    });
+                }
+
+                if section_index == sections.last().map_or(usize::MAX, |o| o.index) {
+                    sections.last_mut().unwrap().glyphs.push(glyph);
+                } else {
+                    let text = input.sections[section_index].value.clone();
+                    let font = input.font_at_section(section_index).clone();
+                    sections.push(InnerSectionGlyphs {
+                        index: section_index,
+                        text,
+                        font,
+                        glyphs: vec![glyph],
+                    });
+                }
+            }
+
+            (lines, sections)
+        };
+
+        Self {
+            v_alignment: input.v_alignment,
+            lines,
+            sections,
+        }
+    }
+
+    fn line_min_max_y(&self, index: usize) -> Option<(f32, f32)> {
+        let line = self.lines.get(index)?;
+        let mut min_y = f32::INFINITY;
+        let mut max_y = f32::NEG_INFINITY;
+        for i in line.sections.iter() {
+            let section = self.sections.get(*i).unwrap();
+            let (ascent, descent) = section.ascent_descent();
+            min_y = min_y.min(line.baseline + descent);
+            max_y = max_y.max(line.baseline + ascent);
+        }
+        Some((min_y, max_y))
+    }
+
+    fn into_final_output(mut self) -> LayoutOutput {
+        let (bbox_min_y, bbox_height) = {
+            let t0 = self.line_min_max_y(0).unwrap_or_default();
+            let t1 = self
+                .line_min_max_y(self.lines.len() - 1)
+                .unwrap_or_default();
+            (t0.0, t1.1 - t0.0)
+        };
+
+        let alignment_offset = match self.v_alignment {
+            Some(TextAlignment::Bottom) => 0.0,
+            Some(TextAlignment::Top) => bbox_height,
+            _ => bbox_height * 0.5,
+        };
+
+        for (index, line) in self.lines.iter().enumerate() {
+            let (min_y, max_y) = self.line_min_max_y(index).unwrap();
+            let line_middle = (min_y + max_y) * 0.5;
+            let y = bbox_height
+                - (line_middle - bbox_min_y)
+                - (line_middle - line.baseline)
+                - alignment_offset;
+
+            for section_index in line.sections.iter() {
+                let section = self.sections.get_mut(*section_index).unwrap();
+                for item in section.glyphs.iter_mut() {
+                    if item.glyph.position.y == line.baseline {
+                        item.glyph.position.y = y;
+                    }
+                }
+            }
+        }
+
+        let mut sections = Vec::new();
+        let mut bbox = Rect {
+            min: Vec2::splat(f32::MAX),
+            max: Vec2::splat(f32::MIN),
+        };
+
+        for item in self.sections.iter() {
+            sections.push(item.layout());
+            bbox = bbox.union(item.compute_bbox());
+        }
+        LayoutOutput { bbox, sections }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct InnerLine {
+    pub baseline: f32,
+    pub sections: Vec<usize>,
+}
+
+#[derive(Clone, Debug)]
+struct InnerSectionGlyphs {
     pub index: usize,
     pub text: String,
     pub font: FontArc,
     pub glyphs: Vec<SectionGlyph>,
 }
 
-impl RawSectionGlyphs {
-    fn groups(input: &LayoutInput, glyphs: Vec<SectionGlyph>) -> Vec<Self> {
-        let mut sections: Vec<Self> = Vec::new();
-        for glyph in glyphs {
-            let index = glyph.section_index;
-            if index == sections.last().map_or(usize::MAX, |o| o.index) {
-                sections.last_mut().unwrap().glyphs.push(glyph);
-            } else {
-                let text = input.sections[index].value.clone();
-                let font = input.font_at_section(index).clone();
-                sections.push(Self {
-                    index,
-                    text,
-                    font,
-                    glyphs: vec![glyph],
-                });
-            }
-        }
-        sections
-    }
-
+impl InnerSectionGlyphs {
     fn font_scale(&self) -> PxScale {
         self.glyphs
             .first()
@@ -176,10 +309,14 @@ impl RawSectionGlyphs {
             .find_map(|o| (o.0 == byte_index).then_some(o.1))
     }
 
-    fn compute_bbox(&self) -> Rect {
+    fn ascent_descent(&self) -> (f32, f32) {
         let scaled_font = self.scaled_font();
-        let ascent = scaled_font.ascent();
-        let descent = scaled_font.descent();
+        (scaled_font.ascent(), scaled_font.descent())
+    }
+
+    fn compute_bbox(&self) -> Rect {
+        let scaled_font: PxScaleFont<FontArc> = self.scaled_font();
+        let (ascent, descent) = (scaled_font.ascent(), scaled_font.descent());
 
         let mut bbox = Rect {
             min: Vec2::splat(f32::MAX),
@@ -188,10 +325,11 @@ impl RawSectionGlyphs {
 
         for item in self.glyphs.iter() {
             let glyph = &item.glyph;
-            let x_min = glyph.position.x;
-            let x_max = x_min + scaled_font.h_advance(glyph.id); // TODO: handle kerning
+            let bearing_x = scaled_font.h_side_bearing(glyph.id);
+            let x_min = glyph.position.x + bearing_x; // TODO: handle kerning
+            let x_max = glyph.position.x + scaled_font.h_advance(glyph.id) - bearing_x;
 
-            // NOTE: Y Axis is assumbed to be from bottom to top
+            // NOTE: Y Axis is from bottom to top
             let rect = Rect {
                 min: Vec2::new(x_min, glyph.position.y + descent),
                 max: Vec2::new(x_max, glyph.position.y + ascent),
@@ -204,9 +342,6 @@ impl RawSectionGlyphs {
     fn layout(&self) -> PositionedSection {
         let scaled_font = self.scaled_font();
         let scale = Vec2::new(scaled_font.h_scale_factor(), scaled_font.v_scale_factor());
-        let ascent_descent = (scaled_font.ascent(), scaled_font.descent());
-
-        let section_bbox = self.compute_bbox();
 
         let mut glyphs = Vec::new();
         for glyph in self.glyphs.iter() {
@@ -230,58 +365,21 @@ impl RawSectionGlyphs {
             })
         }
 
+        let (ascent, descent) = (scaled_font.ascent(), scaled_font.descent());
+        let bbox = self.compute_bbox();
+
         PositionedSection {
             index: self.index,
-            ascent_descent,
-            bbox: section_bbox,
+            ascent,
+            descent,
+            bbox,
             glyphs,
         }
     }
 }
 
-pub fn run_layout(input: &LayoutInput) -> Result<LayoutOutput> {
-    let mut sections: Vec<SectionText> = Vec::with_capacity(input.sections.len());
-
-    for section in input.sections.iter() {
-        let font_index = section.style.font_index;
-        let scale = PxScale::from(section.style.font_size);
-        sections.push(SectionText {
-            text: &section.value,
-            font_id: FontId(font_index),
-            scale,
-        });
-    }
-
-    let layout = input.as_layout();
-    let geometry = input.as_geometry();
-    let mut glyphs = layout.calculate_glyphs(&input.fonts, &geometry, &sections);
-    fix_section_glyph_position_y(&mut glyphs);
-
-    let groups = RawSectionGlyphs::groups(input, glyphs);
-
-    let mut bbox = Rect {
-        min: Vec2::splat(f32::MAX),
-        max: Vec2::splat(f32::MIN),
-    };
-
-    let mut sections = Vec::new();
-    for group in groups {
-        let section = group.layout();
-        bbox = bbox.union(section.bbox);
-        sections.push(section);
-    }
-    Ok(LayoutOutput { bbox, sections })
-}
-
-fn fix_section_glyph_position_y(glyphs: &mut [SectionGlyph]) {
-    let offset = match glyphs.first() {
-        Some(o) => o.glyph.position.y,
-        None => return,
-    };
-
-    for item in glyphs {
-        item.glyph.position.y -= offset;
-    }
+pub fn run_layout(input: &LayoutInput) -> LayoutOutput {
+    InnerOutput::new(&input).into_final_output()
 }
 
 fn get_glyph_metrics(font: &FontArc, char: char) -> Option<GlyphMetrics> {
@@ -310,10 +408,13 @@ mod tests {
     #[test]
     fn test_text_layout() {
         let input = prepare_input().unwrap();
-        let output = run_layout(&input).unwrap();
-        println!("output bbox: {:?}", output.bbox);
+        let output = run_layout(&input);
+        let bbox = output.bbox;
+        println!("output bbox: {bbox:?}");
+        assert_eq!(bbox.min.y.abs(), bbox.max.y);
+
         for section in output.sections.iter() {
-            let (ascent, descent) = section.ascent_descent;
+            let (ascent, descent) = (section.ascent, section.descent);
             println!(
                 "section {}: ascent {ascent}, descent {descent}, bbox {:?}",
                 section.index, section.bbox
@@ -336,14 +437,14 @@ mod tests {
         }
 
         let sections = vec![
-            LayoutTextSection::new("Hello, World! ".into(), LayoutTextStyle::new(0, 20.0)),
+            LayoutTextSection::new("Hello, World! \n".into(), LayoutTextStyle::new(0, 20.0)),
             LayoutTextSection::new("Good morning, VAR!".into(), LayoutTextStyle::new(1, 30.0)),
         ];
 
         Ok(LayoutInput {
             fonts,
             sections,
-            bounds: Some((120.0, f32::INFINITY)),
+            bounds: Some((80.0, f32::INFINITY)),
             h_alignment: Some(TextAlignment::Center),
             ..Default::default()
         })

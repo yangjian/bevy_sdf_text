@@ -1,13 +1,13 @@
 #import bevy_pbr::mesh_vertex_output MeshVertexOutput
 
-struct MtsdfMaterial {
+struct SdfTextMaterial {
     px_range: f32,
     fg_color: vec4<f32>,
     bg_color: vec4<f32>,
 };
 
 @group(1) @binding(0)
-var<uniform> material: MtsdfMaterial;
+var<uniform> material: SdfTextMaterial;
 
 @group(1) @binding(1)
 var atlas_texture: texture_2d<f32>;
