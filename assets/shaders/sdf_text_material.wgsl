@@ -2,8 +2,6 @@
 
 struct SdfTextMaterial {
     px_range: f32,
-    fg_color: vec4<f32>,
-    bg_color: vec4<f32>,
 };
 
 @group(1) @binding(0)
@@ -28,7 +26,7 @@ fn fragment(mesh: MeshVertexOutput) -> @location(0) vec4<f32> {
     let to_pixels = material.px_range / length(vec2(dx, dy));
     let opacity = clamp((sd - 0.5) * to_pixels + 0.5, 0.0, 1.0);
 
-    return mix(material.bg_color, material.fg_color, opacity);
+    return mix(vec4<f32>(0.0), mesh.color, opacity);
 }
 
 fn median(color: vec3<f32>) -> f32 {

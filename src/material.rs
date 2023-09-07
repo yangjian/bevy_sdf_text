@@ -5,8 +5,6 @@ use bevy::render::render_resource::{AsBindGroup, ShaderRef, ShaderType};
 #[derive(Clone, Copy, Debug, ShaderType)]
 pub struct SdfTextMaterialUniform {
     pub px_range: f32,
-    pub fg_color: Color,
-    pub bg_color: Color,
 }
 
 #[derive(AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
@@ -34,13 +32,14 @@ impl Material for SdfTextMaterial {
 
 #[derive(Clone, Copy, Debug, ShaderType)]
 pub struct SdfRectMaterialUniform {
-    pub px_range: f32,
-    pub fg_color: Color,
-    pub bg_color: Color,
+    pub size: Vec2,
+    pub border_radius: f32,
+    pub border_pixels: f32,
+    pub border_color: Vec4,
 }
 
 #[derive(AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
-#[uuid = "6ad7223b-7ce9-4083-818b-84ed1b5ca806"]
+#[uuid = "59697CD1-6E29-40E4-A878-75DF4F19B5FF"]
 pub struct SdfRectMaterial {
     #[uniform(0)]
     pub uniform: SdfRectMaterialUniform,

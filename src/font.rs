@@ -1,45 +1,36 @@
-use ab_glyph::FontArc;
 use anyhow::{anyhow, Result};
 use bevy::prelude::{Rect, Vec2};
 use bevy::reflect::{TypePath, TypeUuid};
 use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace};
 
-use crate::SdfAtlasParams;
-
-#[derive(TypeUuid, TypePath)]
+#[derive(Debug, TypeUuid, TypePath)]
 #[uuid = "82b51e5b-f557-46cb-a7aa-1d35aff6f403"]
 pub struct SdfFont {
     pub name: String,
-    pub owned_face: OwnedFace,
-    pub ab_font: FontArc,
+    pub face: OwnedFace,
     pub metrics: FontMetrics,
-    pub atlas_params: SdfAtlasParams,
 }
 
 impl SdfFont {
-    pub fn new(name: String, path: &str, atlas_params: SdfAtlasParams) -> Result<Self> {
-        let data = std::fs::read(path)?;
-        let mut sdf_font = Self::load(name, data)?;
-        sdf_font.atlas_params = atlas_params;
-        Ok(sdf_font)
-    }
-
-    pub fn load(name: String, data: Vec<u8>) -> Result<Self> {
-        let owned_face: OwnedFace = OwnedFace::from_vec(data.clone(), 0)?;
-        let ab_font = FontArc::try_from_vec(data)?;
-        let metrics = FontMetrics::new(owned_face.as_face_ref())
+    pub fn new(name: String, data: Vec<u8>) -> Result<Self> {
+        let face: OwnedFace = OwnedFace::from_vec(data, 0)?;
+        let metrics = FontMetrics::new(face.as_face_ref())
             .ok_or_else(|| anyhow!("unable to get font metrics"))?;
+
         Ok(Self {
             name,
-            owned_face,
-            ab_font,
+            face,
+            // ab_font,
             metrics,
-            atlas_params: Default::default(),
         })
     }
 
-    pub fn face(&self) -> &Face {
-        self.owned_face.as_face_ref()
+    pub fn face_ref(&self) -> &Face {
+        self.face.as_face_ref()
+    }
+
+    pub fn data(&self) -> Vec<u8> {
+        self.face.as_slice().into()
     }
 }
 
@@ -120,17 +111,18 @@ mod tests {
             "MyRobotoSlab-Regular",
         ] {
             let font_path = format!("assets/fonts/{}.ttf", name);
-            let font = SdfFont::new(name.into(), &font_path, Default::default()).unwrap();
+            let font_data = std::fs::read(&font_path).unwrap();
+            let font = SdfFont::new(name.into(), font_data).unwrap();
             println!("font {}: {:?}", font.name, font.metrics);
 
-            let tables = font.face().tables();
+            let tables = font.face_ref().tables();
             println!(
                 "gpos: {}, kern {}",
                 tables.gpos.is_some(),
                 tables.kern.is_some(),
             );
 
-            let tables = font.face().tables();
+            let tables = font.face_ref().tables();
             let gpos = tables.gpos.as_ref().unwrap();
             for lookup in gpos.lookups {
                 for item in lookup.subtables.into_iter::<PositioningSubtable>() {
@@ -173,7 +165,7 @@ mod tests {
                 }
             }
 
-            let faster_face: PreParsedSubtables<'_, _> = PreParsedSubtables::from(font.owned_face);
+            let faster_face: PreParsedSubtables<'_, _> = PreParsedSubtables::from(font.face);
             let g0 = faster_face.glyph_index('V').unwrap();
             let g1 = faster_face.glyph_index('A').unwrap();
             let kern = faster_face.glyphs_hor_kerning(g0, g1);

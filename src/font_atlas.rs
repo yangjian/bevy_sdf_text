@@ -2,14 +2,89 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::path::Path;
 
+use ab_glyph::FontArc;
 use anyhow::{anyhow, Result};
+use bevy::asset::HandleId;
+use bevy::prelude::{AlphaMode, Assets, Handle, Resource};
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use bevy::render::texture::{Image, ImageSampler};
 use msdfgen::{
     Bitmap, Bound, FillRule, FontExt, Framing, Gray, MsdfGeneratorConfig, Projection, Range, Rgba,
     Vector2, MID_VALUE,
 };
-use owned_ttf_parser::{Face, GlyphId};
+use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace};
 
-use crate::GlyphMetrics;
+use crate::{GlyphMetrics, SdfTextMaterial, SdfTextMaterialUniform};
+
+#[derive(Default, Debug, Resource)]
+pub struct SdfFontAtlasRes {
+    atlases: HashMap<HandleId, SdfFontAtlas>,
+}
+
+impl SdfFontAtlasRes {
+    pub fn font_atlas(&self, handle: HandleId) -> Option<&SdfFontAtlas> {
+        self.atlases.get(&handle)
+    }
+
+    pub fn insert(
+        &mut self,
+        font: HandleId,
+        face: &OwnedFace,
+        params: SdfAtlasParams,
+        textures: &mut Assets<Image>,
+        materials: &mut Assets<SdfTextMaterial>,
+    ) -> Result<()> {
+        let font_data = face.as_slice().to_owned();
+        let ab_font: FontArc = FontArc::try_from_vec(font_data)?;
+        let chars = printable_ascii_chars();
+        let atlas = SdfAtlas::new(face.as_face_ref(), params, chars)?;
+
+        let mut image = Image::new(
+            Extent3d {
+                width: atlas.bitmap.width(),
+                height: atlas.bitmap.height(),
+                depth_or_array_layers: 1,
+            },
+            TextureDimension::D2,
+            atlas.bitmap.raw_pixels().to_vec(),
+            TextureFormat::Rgba32Float,
+        );
+        image.sampler_descriptor = ImageSampler::linear();
+
+        let texture = textures.add(image);
+        let material = materials.add(SdfTextMaterial {
+            uniform: SdfTextMaterialUniform {
+                px_range: atlas.px_range(),
+            },
+            atlas_texture: texture.clone(),
+            alpha_mode: AlphaMode::Blend,
+        });
+
+        self.atlases.insert(
+            font,
+            SdfFontAtlas {
+                ab_font,
+                params,
+                grid_size: atlas.grid_size,
+                glyphs: atlas.glyphs,
+                texture,
+                material,
+            },
+        );
+
+        Ok(())
+    }
+}
+
+#[derive(Debug)]
+pub struct SdfFontAtlas {
+    pub ab_font: FontArc,
+    pub params: SdfAtlasParams,
+    pub grid_size: (u32, u32),
+    pub glyphs: HashMap<char, SdfAtlasGlyph>,
+    pub texture: Handle<Image>,
+    pub material: Handle<SdfTextMaterial>,
+}
 
 #[derive(Clone, Copy, Debug)]
 pub struct SdfAtlasParams {
@@ -28,6 +103,7 @@ impl Default for SdfAtlasParams {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct SdfAtlasGlyph {
     pub char: char,
     pub metrics: GlyphMetrics,
@@ -37,15 +113,17 @@ pub struct SdfAtlasGlyph {
     pub tex_coord_p11: [f32; 2],
 }
 
+#[derive(Clone)]
 pub struct SdfAtlas {
     pub params: SdfAtlasParams,
+    pub chars: Vec<char>,
     pub grid_size: (u32, u32),
-    pub bitmap: Bitmap<Rgba<f32>>,
     pub glyphs: HashMap<char, SdfAtlasGlyph>,
+    pub bitmap: Bitmap<Rgba<f32>>,
 }
 
 impl SdfAtlas {
-    pub fn create(face: &Face, params: SdfAtlasParams, chars: &[char]) -> Result<Self> {
+    pub fn new(face: &Face, params: SdfAtlasParams, chars: Vec<char>) -> Result<Self> {
         let mut gen_config = MsdfGeneratorConfig::default();
         gen_config.set_overlap_support(true);
 
@@ -150,8 +228,9 @@ impl SdfAtlas {
 
         Ok(SdfAtlas {
             params,
-            glyphs,
+            chars,
             grid_size: (grid_width, grid_height),
+            glyphs,
             bitmap: atlas_bitmap,
         })
     }
@@ -165,7 +244,7 @@ impl SdfAtlas {
     }
 
     pub fn export_bitmap_png<P: AsRef<Path>>(&self, path: P) -> Result<()> {
-        let output = File::create(path.as_ref())?;
+        let output: File = File::create(path.as_ref())?;
         self.bitmap.write_png(output)?;
         Ok(())
     }
@@ -181,7 +260,7 @@ impl SdfAtlas {
         self.bitmap
             .render(&mut preview, self.params.px_range as f64, MID_VALUE);
 
-        let mut output = File::create(path.as_ref())?;
+        let mut output: File = File::create(path.as_ref())?;
         preview.write_png(&mut output)?;
 
         Ok(())
@@ -216,11 +295,12 @@ mod tests {
     fn test_sdf_atlas() {
         let _ = std::fs::create_dir("tmp");
 
-        let chars: Vec<char> = printable_ascii_chars();
         for name in ["Roboto-Regular", "FiraSans-Regular"] {
             let font_path = format!("assets/fonts/{}.ttf", name);
-            let font = SdfFont::new(name.into(), &font_path, Default::default()).unwrap();
-            let atlas = SdfAtlas::create(font.face(), font.atlas_params, &chars).unwrap();
+            let font_data = std::fs::read(&font_path).unwrap();
+            let font = SdfFont::new(name.into(), font_data).unwrap();
+            let chars = printable_ascii_chars();
+            let atlas = SdfAtlas::new(font.face_ref(), Default::default(), chars).unwrap();
 
             let atlas_img_path = format!("tmp/{}-atlas.png", name);
             atlas.export_bitmap_png(&atlas_img_path).unwrap();

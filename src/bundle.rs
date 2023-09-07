@@ -1,19 +1,23 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
-use ab_glyph::FontArc;
+use bevy::asset::HandleId;
+use bevy::log;
 use bevy::prelude::*;
-use bevy::render::mesh::Indices;
-use bevy::render::render_resource::PrimitiveTopology;
 
-use crate::layout::*;
-use crate::SdfAtlas;
-use crate::SdfFont;
-use crate::SdfTextMaterial;
+use crate::{build_sdf_text_mesh, layout::*};
+use crate::{PlaneWithUV, SdfRectMaterial, SdfTextMaterial};
+use crate::{SdfFont, SdfFontAtlas, SdfFontAtlasRes, SdfText, SdfTextAnchor};
 
 #[derive(Bundle, Clone, Debug, Default)]
 pub struct SdfTextBundle {
     /// Text mesh configuration
     pub text: SdfText,
+
+    /// How the text is positioned relative to its transform.
+    pub text_anchor: SdfTextAnchor,
+
+    /// Text background.
+    pub text_background: SdfTextBackground,
 
     /// Standard bevy [`Transform`] for positioning the text
     pub transform: Transform,
@@ -24,152 +28,253 @@ pub struct SdfTextBundle {
     /// The visibility properties of the text.
     pub visibility: Visibility,
 
-    /// Internal state, no public API
-    pub sdf_text_state: SdfTextState,
+    /// Algorithmically-computed indication of whether an entity is visible and should be extracted for rendering.
+    pub computed_visibility: ComputedVisibility,
 }
 
-#[derive(Component, Clone, Default, Debug)]
-// #[reflect(Component, Default)]
-pub struct SdfText {
-    pub sections: Vec<SdfTextSection>,
-    pub horizontal_alignment: Option<crate::TextAlignment>,
-    pub bounds: Option<(f32, f32)>,
+#[derive(Component, Clone, Default, Debug, PartialEq, Reflect)]
+pub struct SdfTextBackground {
+    pub padding: Vec2,
+    pub color: Color,
+    pub border_color: Color,
+    pub border_size: f32,      // in pixel unit
+    pub border_radius: f32,    // in world unit
+    pub z_offset: Option<f32>, // default is -0.001
 }
 
-impl SdfText {
-    pub const fn with_horizontal_alignment(mut self, alignment: crate::TextAlignment) -> Self {
-        self.horizontal_alignment = Some(alignment);
-        self
+impl SdfTextBackground {
+    pub fn is_empty(&self) -> bool {
+        self.color.a() == 0.0 && !self.has_border()
+    }
+
+    pub fn has_border(&self) -> bool {
+        self.border_color.a() > 0.0 && self.border_size > 0.0
     }
 }
 
-#[derive(Clone, Default, Debug)]
-pub struct SdfTextSection {
-    pub text: String,
-    pub font: Handle<SdfFont>,
-    pub font_size: f32,
+#[derive(Component, Clone, Debug)]
+pub(crate) struct SdfTextState {
+    layout_output: LayoutOutput,
 }
 
-#[derive(Component, Clone, Default, Debug)]
-pub struct SdfTextState {
-    pub(crate) ready_to_layout: bool,
-    pub(crate) layout_output: Option<LayoutOutput>,
+#[derive(Component, Clone, Debug)]
+pub(crate) struct SdfTextBackgroundNode {
+    entity: Entity,
 }
 
-#[derive(Default, Resource)]
-pub struct SdfTextPipeline {}
+#[derive(Event)]
+pub(crate) struct SdfFontAtlasReady(HandleId);
 
-/// Updates the layout and size information whenever the text or style is changed.
-/// This information is computed by the `TextPipeline` on insertion, then stored.
-///
-/// ## World Resources
-///
-/// [`ResMut<Assets<Image>>`](Assets<Image>) -- This system only adds new [`Image`] assets.
-/// It does not modify or observe existing ones.
-#[allow(clippy::too_many_arguments)]
-pub fn update_text(
+pub(crate) fn update_text_mesh(
+    font_atlas_res: Res<SdfFontAtlasRes>,
+    _atlas_events: EventReader<SdfFontAtlasReady>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut textures: ResMut<Assets<Image>>,
-    mut materials: ResMut<Assets<SdfTextMaterial>>,
-    mut fonts: ResMut<Assets<SdfFont>>,
-    mut text_pipeline: ResMut<SdfTextPipeline>,
-    mut text_query: Query<
-        (Entity, Ref<SdfText>, &mut SdfTextState),
-        Or<(Changed<SdfText>, Changed<SdfTextState>)>,
-    >,
+    mut text_query: Query<(Entity, Ref<SdfText>), Without<SdfTextState>>,
     mut queue: Local<HashSet<Entity>>,
 ) {
-    'outer: for (entity, text, mut state) in &mut text_query {
-        if !text.is_changed() || !queue.remove(&entity) {
-            continue;
-        }
-
-        if text.is_changed() {
-            state.ready_to_layout = text.sections.iter().all(|o| fonts.get(&o.font).is_some());
-        }
-
-        if !state.ready_to_layout {
-            queue.insert(entity);
-            continue;
+    let mut handle_text = |entity: Entity, text: &SdfText| -> bool {
+        let text_atlases: Vec<&SdfFontAtlas> = text
+            .sections
+            .iter()
+            .filter_map(|o| font_atlas_res.font_atlas(o.style.font.id()))
+            .collect();
+        if text_atlases.len() != text.sections.len() {
+            let mut entity_cmds = commands.get_entity(entity).unwrap();
+            entity_cmds.clear_children().remove::<SdfTextState>();
+            return false;
         }
 
         let mut layout_input = LayoutInput {
-            h_alignment: text.horizontal_alignment,
+            alignment: text.alignment,
             bounds: text.bounds,
             ..Default::default()
         };
 
-        for section in text.sections.iter() {
-            let font = match fonts.get(&section.font).map(|o| o.ab_font.clone()) {
-                Some(o) => o,
-                None => {
-                    state.ready_to_layout = false;
-                    queue.insert(entity);
-                    continue 'outer;
-                }
-            };
-            layout_input.fonts.push(font);
+        for (index, section) in text.sections.iter().enumerate() {
+            layout_input.fonts.push(text_atlases[index].ab_font.clone());
             layout_input.sections.push(LayoutTextSection {
-                value: section.text.clone(),
+                value: section.value.clone(),
                 style: LayoutTextStyle {
-                    font_index: layout_input.fonts.len() - 1,
-                    font_size: section.font_size,
+                    font_index: index,
+                    font_size: section.style.font_size,
+                    color: section.style.color.as_rgba_linear(),
                 },
             });
         }
 
         let layout_output = run_layout(&layout_input);
-        state.layout_output = Some(layout_output);
+
+        let child_id = commands
+            .spawn((
+                Transform::default(),
+                GlobalTransform::default(),
+                Visibility::default(),
+                ComputedVisibility::default(),
+            ))
+            .with_children(|parent| {
+                for (index, section) in layout_output.sections.iter().enumerate() {
+                    // TODO: merge meshes with same font
+                    let atlas = &text_atlases[index];
+                    let mesh = build_sdf_text_mesh(section, &atlas.glyphs);
+                    parent.spawn(MaterialMeshBundle {
+                        mesh: meshes.add(mesh),
+                        material: atlas.material.clone(),
+                        ..default()
+                    });
+                }
+            })
+            .id();
+
+        let mut entity_cmds = commands.get_entity(entity).unwrap();
+        entity_cmds
+            .clear_children()
+            .add_child(child_id)
+            .insert(SdfTextState { layout_output });
+        true
+    };
+
+    for (entity, text) in &mut text_query {
+        if !text.is_changed() && !queue.remove(&entity) {
+            continue;
+        }
+
+        if !handle_text(entity, &text) {
+            queue.insert(entity);
+        }
     }
 }
 
-fn build_sdf_text_mesh(section: &PositionedSection, atlas: &SdfAtlas) -> Mesh {
-    let n = section.glyphs.len();
-    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(n * 4);
-    let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(n * 4);
-    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(n * 4);
-    let mut indices: Vec<u16> = Vec::with_capacity(n * 6);
-
-    let up = Vec3::Y.to_array();
-
-    for glyph in section.glyphs.iter() {
-        let atlas_glyph = match atlas.get_glyph(glyph.char) {
+#[allow(clippy::type_complexity)]
+pub(crate) fn update_text_anchor(
+    mut commands: Commands,
+    mut text_query: Query<
+        (&SdfTextAnchor, &SdfTextState, &SdfTextBackground, &Children),
+        Or<(Changed<SdfTextAnchor>, Changed<SdfTextState>)>,
+    >,
+) {
+    for (anchor, state, background, children) in &mut text_query {
+        let child = match children.first() {
             Some(o) => o,
             None => continue,
         };
 
-        let n = positions.len() as u16;
-
-        let bbox = glyph.bbox_with_margin(atlas_glyph.margin_ratio);
-        let (x_min, x_max) = (bbox.min.x, bbox.max.x);
-        let (y_min, y_max) = (bbox.min.y, bbox.max.y);
-        positions.push([x_min, y_min, 0.0]);
-        positions.push([x_max, y_min, 0.0]);
-        positions.push([x_max, y_max, 0.0]);
-        positions.push([x_min, y_max, 0.0]);
-
-        uvs.push([atlas_glyph.tex_coord_p00[0], atlas_glyph.tex_coord_p11[1]]);
-        uvs.push(atlas_glyph.tex_coord_p11);
-        uvs.push([atlas_glyph.tex_coord_p11[0], atlas_glyph.tex_coord_p00[1]]);
-        uvs.push(atlas_glyph.tex_coord_p00);
-
-        for _ in 0..4 {
-            normals.push(up);
+        let mut bbox = state.layout_output.bbox;
+        if !background.is_empty() {
+            bbox.min.x -= background.padding.x;
+            bbox.max.x += background.padding.x;
+            bbox.min.y -= background.padding.y;
+            bbox.max.y += background.padding.y;
         }
 
-        indices.push(n);
-        indices.push(n + 1);
-        indices.push(n + 2);
-        indices.push(n);
-        indices.push(n + 2);
-        indices.push(n + 3);
-    }
+        let mut offset = anchor.as_offset(bbox.size());
+        offset.x -= bbox.min.x;
+        offset.y -= bbox.min.y;
 
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    mesh.set_indices(Some(Indices::U16(indices)));
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-    mesh
+        let mut child_cmds = commands.get_entity(*child).unwrap();
+        child_cmds.insert(Transform::from_xyz(offset.x, offset.y, 0.0));
+    }
+}
+
+#[allow(clippy::type_complexity)]
+pub(crate) fn update_text_background(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<SdfRectMaterial>>,
+    mut text_query: Query<
+        (
+            &SdfTextBackground,
+            &SdfTextState,
+            Option<&SdfTextBackgroundNode>,
+            &Children,
+        ),
+        Or<(Changed<SdfTextBackground>, Changed<SdfTextState>)>,
+    >,
+) {
+    for (background, state, bg_node, children) in &mut text_query {
+        let child = match children.first() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        let mut rect = state.layout_output.bbox;
+        rect.min.x -= background.padding.x;
+        rect.max.x += background.padding.x;
+        rect.min.y -= background.padding.y;
+        rect.max.y += background.padding.y;
+
+        let size = rect.size();
+
+        let visibility = background
+            .is_empty()
+            .then_some(Visibility::Hidden)
+            .unwrap_or_default();
+
+        let mesh = meshes.add(
+            PlaneWithUV {
+                rect,
+                color: background.color,
+                p00_uv: (size * -0.5).to_array(),
+                p11_uv: (size * 0.5).to_array(),
+            }
+            .into(),
+        );
+        let material = materials.add(SdfRectMaterial {
+            uniform: crate::SdfRectMaterialUniform {
+                size,
+                border_radius: background.border_radius,
+                border_pixels: background.border_size,
+                border_color: background.border_color.as_rgba_f32().into(),
+            },
+            alpha_mode: AlphaMode::Blend,
+        });
+
+        let node = commands
+            .spawn(MaterialMeshBundle {
+                mesh,
+                material,
+                visibility,
+                transform: Transform::from_xyz(0.0, 0.0, background.z_offset.unwrap_or(-0.001)),
+                ..Default::default()
+            })
+            .id();
+
+        if let Some(node) = bg_node {
+            commands.get_entity(node.entity).unwrap().despawn();
+        }
+
+        let mut child_cmds = commands.get_entity(*child).unwrap();
+        child_cmds
+            .add_child(node)
+            .insert(SdfTextBackgroundNode { entity: node });
+    }
+}
+
+/// Auto setup font atlas on SdfFont loaded event
+pub(crate) fn setup_font_atlas(
+    fonts: Res<Assets<SdfFont>>,
+    mut font_events: EventReader<AssetEvent<SdfFont>>,
+    mut atlas_events: EventWriter<SdfFontAtlasReady>,
+    mut textures: ResMut<Assets<Image>>,
+    mut materials: ResMut<Assets<SdfTextMaterial>>,
+    mut font_atlas_res: ResMut<SdfFontAtlasRes>,
+) {
+    for event in font_events.into_iter() {
+        if let AssetEvent::Created { handle } = event {
+            let font = fonts.get(handle).unwrap();
+            match font_atlas_res.insert(
+                handle.id(),
+                &font.face,
+                Default::default(), // TODO
+                textures.as_mut(),
+                materials.as_mut(),
+            ) {
+                Ok(_) => {
+                    log::info!("inserted atlas for font {}", font.name);
+                    atlas_events.send(SdfFontAtlasReady(handle.id()));
+                }
+                Err(err) => log::error!("can't insert altas for font {}: {err}", font.name),
+            }
+        }
+    }
 }

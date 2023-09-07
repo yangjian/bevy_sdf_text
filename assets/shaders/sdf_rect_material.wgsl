@@ -2,9 +2,7 @@
 
 struct SdfRectMaterial {
     size: vec2<f32>,
-    radius: f32,
-    color: vec4<f32>,
-
+    border_radius: f32,
     border_size: f32,
     border_color: vec4<f32>,
 };
@@ -14,16 +12,24 @@ var<uniform> material: SdfRectMaterial;
 
 @fragment
 fn fragment(mesh: MeshVertexOutput) -> @location(0) vec4<f32> {
-    let sd = computeDistance(msd);
+    let half_size = material.size * 0.5;
+    let distance = distanceOfRoundedBox(mesh.uv, half_size, material.border_radius);
+    let delta_per_pixel = length(vec2(dpdxFine(distance), dpdyFine(distance)));
 
-    let dx = dpdxFine(mesh.uv.x) * f32(tex_dim.x);
-    let dy = dpdyFine(mesh.uv.y) * f32(tex_dim.y);
-    let to_pixels = material.px_range / length(vec2(dx, dy));
-    let opacity = clamp((sd - 0.5) * to_pixels + 0.5, 0.0, 1.0);
+    let low = -(material.border_size + 0.5) * delta_per_pixel;
+    let high = low + delta_per_pixel;
+    var opacity = smoothstep(low, high, distance);
+    var color = mix(vec4<f32>(mesh.color), material.border_color, opacity);
 
-    return mix(material.bg_color, material.fg_color, opacity);
+    opacity = smoothstep(-delta_per_pixel * 0.5, delta_per_pixel * 0.5, distance);
+    color = mix(color, vec4<f32>(0.0), opacity);
+
+    return color;
 }
 
-fn computeDistance(center: vec2<f32>, size: vec2<f32>, radius: f32) -> f32 {
-    return length(max(abs(center) - size + radius, 0.0)) - radius;
+fn distanceOfRoundedBox(pos: vec2<f32>, half_size: vec2<f32>, radius: f32) -> f32 {
+    let q = abs(pos) - half_size + radius;
+    let outside_distance = length(max(q, vec2<f32>(0.0)));
+    let inside_distance = min(max(q.x, q.y), 0.0);
+    return outside_distance + inside_distance - radius;
 }

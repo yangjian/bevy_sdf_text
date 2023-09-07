@@ -1,52 +1,25 @@
 use ab_glyph::{Font, FontArc, PxScale, PxScaleFont, ScaleFont};
-use bevy::prelude::{Rect, Vec2};
+use bevy::prelude::{Color, Rect, Vec2};
 use glyph_brush_layout::{
-    BuiltInLineBreaker, FontId, GlyphPositioner, HorizontalAlign, Layout, SectionGeometry,
-    SectionGlyph, SectionText, VerticalAlign,
+    BuiltInLineBreaker, FontId, GlyphPositioner, Layout, SectionGeometry, SectionGlyph,
+    SectionText, VerticalAlign,
 };
 
-use crate::GlyphMetrics;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum TextAlignment {
-    Left,
-    Center,
-    Right,
-    Top,
-    Bottom,
-}
-
-impl From<TextAlignment> for HorizontalAlign {
-    fn from(value: TextAlignment) -> Self {
-        match value {
-            TextAlignment::Right => HorizontalAlign::Right,
-            TextAlignment::Center => HorizontalAlign::Center,
-            _ => HorizontalAlign::Left,
-        }
-    }
-}
-
-impl From<TextAlignment> for VerticalAlign {
-    fn from(value: TextAlignment) -> Self {
-        match value {
-            TextAlignment::Top => VerticalAlign::Top,
-            TextAlignment::Center => VerticalAlign::Center,
-            _ => VerticalAlign::Bottom,
-        }
-    }
-}
+use crate::{GlyphMetrics, SdfTextAlignment};
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct LayoutTextStyle {
     pub font_index: usize,
     pub font_size: f32,
+    pub color: Color,
 }
 
 impl LayoutTextStyle {
-    pub fn new(font_index: usize, font_size: f32) -> Self {
+    pub fn new(font_index: usize, font_size: f32, color: Color) -> Self {
         Self {
             font_index,
             font_size,
+            color,
         }
     }
 }
@@ -63,13 +36,12 @@ impl LayoutTextSection {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct LayoutInput {
     pub fonts: Vec<FontArc>,
     pub sections: Vec<LayoutTextSection>,
 
-    pub h_alignment: Option<TextAlignment>,
-    pub v_alignment: Option<TextAlignment>,
+    pub alignment: SdfTextAlignment,
     pub bounds: Option<(f32, f32)>,
 }
 
@@ -80,11 +52,9 @@ impl LayoutInput {
     }
 
     fn as_layout(&self) -> Layout<BuiltInLineBreaker> {
-        let mut layout = Layout::default_wrap().v_align(VerticalAlign::Bottom);
-        if let Some(o) = self.h_alignment {
-            layout = layout.h_align(o.into());
-        }
-        layout
+        Layout::default_wrap()
+            .h_align(self.alignment.into())
+            .v_align(VerticalAlign::Bottom)
     }
 
     fn as_geometry(&self) -> SectionGeometry {
@@ -101,6 +71,7 @@ pub struct PositionedSection {
     pub ascent: f32,
     pub descent: f32,
     pub bbox: Rect,
+    pub color: Color,
     pub glyphs: Vec<PositionedGlyph>,
 }
 
@@ -145,7 +116,6 @@ impl LayoutOutput {
 
 #[derive(Clone, Debug)]
 struct InnerOutput {
-    v_alignment: Option<TextAlignment>,
     lines: Vec<InnerLine>,
     sections: Vec<InnerSectionGlyphs>,
 }
@@ -194,13 +164,15 @@ impl InnerOutput {
                 if section_index == sections.last().map_or(usize::MAX, |o| o.index) {
                     sections.last_mut().unwrap().glyphs.push(glyph);
                 } else {
-                    let text = input.sections[section_index].value.clone();
+                    let section = &input.sections[section_index];
+                    let text = section.value.clone();
                     let font = input.font_at_section(section_index).clone();
                     sections.push(InnerSectionGlyphs {
                         index: section_index,
                         text,
                         font,
                         glyphs: vec![glyph],
+                        color: section.style.color,
                     });
                 }
             }
@@ -208,11 +180,7 @@ impl InnerOutput {
             (lines, sections)
         };
 
-        Self {
-            v_alignment: input.v_alignment,
-            lines,
-            sections,
-        }
+        Self { lines, sections }
     }
 
     fn line_min_max_y(&self, index: usize) -> Option<(f32, f32)> {
@@ -237,19 +205,10 @@ impl InnerOutput {
             (t0.0, t1.1 - t0.0)
         };
 
-        let alignment_offset = match self.v_alignment {
-            Some(TextAlignment::Bottom) => 0.0,
-            Some(TextAlignment::Top) => bbox_height,
-            _ => bbox_height * 0.5,
-        };
-
         for (index, line) in self.lines.iter().enumerate() {
             let (min_y, max_y) = self.line_min_max_y(index).unwrap();
             let line_middle = (min_y + max_y) * 0.5;
-            let y = bbox_height
-                - (line_middle - bbox_min_y)
-                - (line_middle - line.baseline)
-                - alignment_offset;
+            let y = bbox_height - (line_middle - bbox_min_y) - (line_middle - line.baseline);
 
             for section_index in line.sections.iter() {
                 let section = self.sections.get_mut(*section_index).unwrap();
@@ -286,6 +245,7 @@ struct InnerSectionGlyphs {
     pub index: usize,
     pub text: String,
     pub font: FontArc,
+    pub color: Color,
     pub glyphs: Vec<SectionGlyph>,
 }
 
@@ -373,13 +333,14 @@ impl InnerSectionGlyphs {
             ascent,
             descent,
             bbox,
+            color: self.color,
             glyphs,
         }
     }
 }
 
 pub fn run_layout(input: &LayoutInput) -> LayoutOutput {
-    InnerOutput::new(&input).into_final_output()
+    InnerOutput::new(input).into_final_output()
 }
 
 fn get_glyph_metrics(font: &FontArc, char: char) -> Option<GlyphMetrics> {
@@ -402,8 +363,11 @@ fn get_glyph_metrics(font: &FontArc, char: char) -> Option<GlyphMetrics> {
 mod tests {
     use ab_glyph::FontArc;
     use anyhow::Result;
+    use bevy::prelude::Color;
 
-    use super::{run_layout, LayoutInput, LayoutTextSection, LayoutTextStyle, TextAlignment};
+    use crate::SdfTextAlignment;
+
+    use super::{run_layout, LayoutInput, LayoutTextSection, LayoutTextStyle};
 
     #[test]
     fn test_text_layout() {
@@ -437,16 +401,21 @@ mod tests {
         }
 
         let sections = vec![
-            LayoutTextSection::new("Hello, World! \n".into(), LayoutTextStyle::new(0, 20.0)),
-            LayoutTextSection::new("Good morning, VAR!".into(), LayoutTextStyle::new(1, 30.0)),
+            LayoutTextSection::new(
+                "Hello, World! \n".into(),
+                LayoutTextStyle::new(0, 20.0, Color::GREEN),
+            ),
+            LayoutTextSection::new(
+                "Good morning, VAR!".into(),
+                LayoutTextStyle::new(1, 30.0, Color::PURPLE),
+            ),
         ];
 
         Ok(LayoutInput {
             fonts,
             sections,
+            alignment: SdfTextAlignment::Center,
             bounds: Some((80.0, f32::INFINITY)),
-            h_alignment: Some(TextAlignment::Center),
-            ..Default::default()
         })
     }
 }
