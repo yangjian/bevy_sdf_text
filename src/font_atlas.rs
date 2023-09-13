@@ -5,6 +5,7 @@ use std::path::Path;
 use ab_glyph::FontArc;
 use anyhow::{anyhow, Result};
 use bevy::asset::HandleId;
+use bevy::log;
 use bevy::prelude::{AlphaMode, Assets, Handle, Resource};
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::render::texture::{Image, ImageSampler};
@@ -158,7 +159,7 @@ impl SdfAtlas {
             let mut shape = match face.glyph_shape(glyph_id) {
                 Some(o) => o,
                 None => {
-                    println!("no glyph shape for char {char:?}");
+                    log::warn!("no glyph shape for char {char:?}");
                     continue;
                 }
             };

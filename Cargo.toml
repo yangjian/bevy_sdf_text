@@ -1,5 +1,5 @@
 [package]
-name = "bevy-sdf-text"
+name = "bevy_sdf_text"
 version = "0.1.0"
 edition = "2021"
 description = "Text rendering for Bevy using Multi-Channel Signed Distance Field"

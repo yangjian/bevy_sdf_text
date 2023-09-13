@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use bevy::asset::HandleId;
 use bevy::log;
+use bevy::pbr::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
 
 use crate::{build_sdf_text_mesh, layout::*};
@@ -57,20 +58,29 @@ pub(crate) struct SdfTextState {
     layout_output: LayoutOutput,
 }
 
-#[derive(Component, Clone, Debug)]
-pub(crate) struct SdfTextBackgroundNode {
-    entity: Entity,
+#[derive(Component, Clone, Default, Debug, Reflect)]
+pub(crate) struct SdfTextBackgroundNodeInfo(pub Option<(SdfTextBackground, Entity)>);
+
+impl SdfTextBackgroundNodeInfo {
+    fn needs_update(&self, other: &SdfTextBackground) -> bool {
+        if other.is_empty() && self.0.is_none() {
+            return false;
+        }
+
+        Some(other) != self.0.as_ref().map(|o| &o.0)
+    }
 }
 
 #[derive(Event)]
 pub(crate) struct SdfFontAtlasReady(HandleId);
 
+#[allow(clippy::type_complexity)]
 pub(crate) fn update_text_mesh(
     font_atlas_res: Res<SdfFontAtlasRes>,
     _atlas_events: EventReader<SdfFontAtlasReady>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut text_query: Query<(Entity, Ref<SdfText>), Without<SdfTextState>>,
+    mut text_query: Query<(Entity, Ref<SdfText>), Or<(Without<SdfTextState>, Changed<SdfText>)>>,
     mut queue: Local<HashSet<Entity>>,
 ) {
     let mut handle_text = |entity: Entity, text: &SdfText| -> bool {
@@ -80,8 +90,11 @@ pub(crate) fn update_text_mesh(
             .filter_map(|o| font_atlas_res.font_atlas(o.style.font.id()))
             .collect();
         if text_atlases.len() != text.sections.len() {
-            let mut entity_cmds = commands.get_entity(entity).unwrap();
-            entity_cmds.clear_children().remove::<SdfTextState>();
+            commands
+                .entity(entity)
+                .despawn_descendants()
+                .clear_children()
+                .remove::<SdfTextState>();
             return false;
         }
 
@@ -106,31 +119,35 @@ pub(crate) fn update_text_mesh(
         let layout_output = run_layout(&layout_input);
 
         let child_id = commands
-            .spawn((
-                Transform::default(),
-                GlobalTransform::default(),
-                Visibility::default(),
-                ComputedVisibility::default(),
-            ))
+            .spawn((Name::new("SdfTextContainer"), SpatialBundle::default()))
             .with_children(|parent| {
                 for (index, section) in layout_output.sections.iter().enumerate() {
                     // TODO: merge meshes with same font
                     let atlas = &text_atlases[index];
                     let mesh = build_sdf_text_mesh(section, &atlas.glyphs);
-                    parent.spawn(MaterialMeshBundle {
-                        mesh: meshes.add(mesh),
-                        material: atlas.material.clone(),
-                        ..default()
-                    });
+                    parent
+                        .spawn(MaterialMeshBundle {
+                            mesh: meshes.add(mesh),
+                            material: atlas.material.clone(),
+                            ..default()
+                        })
+                        .insert((
+                            Name::new("SdfTextSection"),
+                            NotShadowCaster,
+                            NotShadowReceiver,
+                        ));
                 }
             })
             .id();
 
-        let mut entity_cmds = commands.get_entity(entity).unwrap();
-        entity_cmds
+        commands
+            .entity(entity)
+            .despawn_descendants()
             .clear_children()
             .add_child(child_id)
-            .insert(SdfTextState { layout_output });
+            .insert(SdfTextState { layout_output })
+            .insert(SdfTextBackgroundNodeInfo::default());
+
         true
     };
 
@@ -171,8 +188,8 @@ pub(crate) fn update_text_anchor(
         offset.x -= bbox.min.x;
         offset.y -= bbox.min.y;
 
-        let mut child_cmds = commands.get_entity(*child).unwrap();
-        child_cmds.insert(Transform::from_xyz(offset.x, offset.y, 0.0));
+        let transform = Transform::from_xyz(offset.x, offset.y, 0.0);
+        commands.entity(*child).insert(transform);
     }
 }
 
@@ -185,14 +202,18 @@ pub(crate) fn update_text_background(
         (
             &SdfTextBackground,
             &SdfTextState,
-            Option<&SdfTextBackgroundNode>,
+            &mut SdfTextBackgroundNodeInfo,
             &Children,
         ),
         Or<(Changed<SdfTextBackground>, Changed<SdfTextState>)>,
     >,
 ) {
-    for (background, state, bg_node, children) in &mut text_query {
-        let child = match children.first() {
+    for (background, state, mut node_info, children) in &mut text_query {
+        if !node_info.needs_update(background) {
+            continue;
+        }
+
+        let container_entity = match children.first() {
             Some(o) => o,
             None => continue,
         };
@@ -237,16 +258,19 @@ pub(crate) fn update_text_background(
                 transform: Transform::from_xyz(0.0, 0.0, background.z_offset.unwrap_or(-0.001)),
                 ..Default::default()
             })
+            .insert((
+                Name::new("SdfTextBackground"),
+                NotShadowCaster,
+                NotShadowReceiver,
+            ))
             .id();
 
-        if let Some(node) = bg_node {
-            commands.get_entity(node.entity).unwrap().despawn();
+        if let Some((_, entity)) = node_info.0.take() {
+            commands.entity(entity).remove_parent().despawn();
         }
 
-        let mut child_cmds = commands.get_entity(*child).unwrap();
-        child_cmds
-            .add_child(node)
-            .insert(SdfTextBackgroundNode { entity: node });
+        commands.entity(*container_entity).add_child(node);
+        node_info.0 = Some((background.clone(), node));
     }
 }
 
