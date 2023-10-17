@@ -7,9 +7,9 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 anyhow = "1.0.72"
-ab_glyph = "0.2.6"
-bevy = { version = "0.11.2", default-features = false, features = ["bevy_core_pipeline", "bevy_render", "bevy_pbr", "bevy_asset"] }
-glyph_brush_layout = "0.2.1"
+ab_glyph = "0.2.22"
+bevy = { version = "0.11.3", default-features = false, features = ["bevy_core_pipeline", "bevy_render", "bevy_pbr", "bevy_asset"] }
+glyph_brush_layout = "0.2.3"
 msdfgen = { version = "0.2.1", default-features = false, features = ["ttf-parser", "png"] }
 ttf-parser = "0.18.1"
 owned_ttf_parser = "0.18.1"
@@ -17,5 +17,5 @@ thiserror = "1.0.44"
 serde = "1.0"
 
 [dev-dependencies]
-bevy = { version = "0.11.2", default-features = false, features = ["bevy_winit", "multi-threaded", "zstd"] }
-bevy_panorbit_camera = { version = "0.6.0", features = ["bevy_egui"] }
+bevy = { version = "0.11.3", default-features = false, features = ["bevy_winit", "multi-threaded", "zstd"] }
+bevy_panorbit_camera = { version = "0.8.0", features = ["bevy_egui"] }
