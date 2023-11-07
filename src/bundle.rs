@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use bevy::asset::HandleId;
 use bevy::log;
 use bevy::pbr::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
@@ -20,17 +19,20 @@ pub struct SdfTextBundle {
     /// Text background.
     pub text_background: SdfTextBackground,
 
-    /// Standard bevy [`Transform`] for positioning the text
-    pub transform: Transform,
-
-    /// Standard bevy [`GlobalTransform`]
-    pub global_transform: GlobalTransform,
-
-    /// The visibility properties of the text.
+    /// The visibility of the entity.
     pub visibility: Visibility,
 
-    /// Algorithmically-computed indication of whether an entity is visible and should be extracted for rendering.
-    pub computed_visibility: ComputedVisibility,
+    /// The inherited visibility of the entity.
+    pub inherited_visibility: InheritedVisibility,
+
+    /// The view visibility of the entity.
+    pub view_visibility: ViewVisibility,
+
+    /// The transform of the entity.
+    pub transform: Transform,
+
+    /// The global transform of the entity.
+    pub global_transform: GlobalTransform,
 }
 
 #[derive(Component, Clone, Default, Debug, PartialEq, Reflect)]
@@ -72,7 +74,7 @@ impl SdfTextBackgroundNodeInfo {
 }
 
 #[derive(Event)]
-pub(crate) struct SdfFontAtlasReady(HandleId);
+pub(crate) struct SdfFontAtlasReady(AssetId<SdfFont>);
 
 #[allow(clippy::type_complexity)]
 pub(crate) fn update_text_mesh(
@@ -283,11 +285,11 @@ pub(crate) fn setup_font_atlas(
     mut materials: ResMut<Assets<SdfTextMaterial>>,
     mut font_atlas_res: ResMut<SdfFontAtlasRes>,
 ) {
-    for event in font_events.into_iter() {
-        if let AssetEvent::Created { handle } = event {
-            let font = fonts.get(handle).unwrap();
+    for event in font_events.read() {
+        if let AssetEvent::Added { id } = event {
+            let font = fonts.get(*id).unwrap();
             match font_atlas_res.insert(
-                handle.id(),
+                *id,
                 &font.face,
                 Default::default(), // TODO
                 textures.as_mut(),
@@ -295,7 +297,7 @@ pub(crate) fn setup_font_atlas(
             ) {
                 Ok(_) => {
                     log::info!("inserted atlas for font {}", font.name);
-                    atlas_events.send(SdfFontAtlasReady(handle.id()));
+                    atlas_events.send(SdfFontAtlasReady(*id));
                 }
                 Err(err) => log::error!("can't insert altas for font {}: {err}", font.name),
             }

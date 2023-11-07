@@ -1,10 +1,9 @@
 use anyhow::{anyhow, Result};
-use bevy::prelude::{Rect, Vec2};
-use bevy::reflect::{TypePath, TypeUuid};
+use bevy::prelude::{Asset, Rect, Vec2};
+use bevy::reflect::TypePath;
 use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace};
 
-#[derive(Debug, TypeUuid, TypePath)]
-#[uuid = "82b51e5b-f557-46cb-a7aa-1d35aff6f403"]
+#[derive(Asset, TypePath, Debug)]
 pub struct SdfFont {
     pub name: String,
     pub face: OwnedFace,
@@ -20,7 +19,6 @@ impl SdfFont {
         Ok(Self {
             name,
             face,
-            // ab_font,
             metrics,
         })
     }

@@ -1,4 +1,4 @@
-#import bevy_pbr::mesh_vertex_output MeshVertexOutput
+#import bevy_pbr::forward_io::VertexOutput
 
 struct SdfTextMaterial {
     px_range: f32,
@@ -14,7 +14,7 @@ var atlas_texture: texture_2d<f32>;
 var atlas_sampler: sampler;
 
 @fragment
-fn fragment(mesh: MeshVertexOutput) -> @location(0) vec4<f32> {
+fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let msd = textureSample(atlas_texture, atlas_sampler, mesh.uv).rgb;
     let sd = median(msd);
 

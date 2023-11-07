@@ -12,7 +12,7 @@ pub struct SdfTextPlugin;
 
 impl Plugin for SdfTextPlugin {
     fn build(&self, app: &mut App) {
-        app.add_asset::<SdfFont>()
+        app.init_asset::<SdfFont>()
             .register_type::<SdfText>()
             .register_type::<SdfTextSection>()
             .register_type::<Vec<SdfTextSection>>()

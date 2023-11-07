@@ -1,4 +1,4 @@
-use bevy::core_pipeline::fxaa::Fxaa;
+use bevy::core_pipeline::{fxaa::Fxaa, tonemapping::Tonemapping};
 use bevy::prelude::shape::UVSphere;
 use bevy::prelude::*;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
@@ -125,6 +125,7 @@ fn setup(
     commands
         .spawn(Camera3dBundle {
             transform: Transform::from_xyz(0.0, 0.0, 60.0).looking_at(Vec3::ZERO, Vec3::Y),
+            tonemapping: Tonemapping::None,
             ..default()
         })
         .insert((PanOrbitCamera::default(), Fxaa::default()));

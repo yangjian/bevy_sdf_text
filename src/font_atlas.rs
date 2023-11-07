@@ -4,7 +4,7 @@ use std::path::Path;
 
 use ab_glyph::FontArc;
 use anyhow::{anyhow, Result};
-use bevy::asset::HandleId;
+use bevy::asset::AssetId;
 use bevy::log;
 use bevy::prelude::{AlphaMode, Assets, Handle, Resource};
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
@@ -15,21 +15,21 @@ use msdfgen::{
 };
 use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace};
 
-use crate::{GlyphMetrics, SdfTextMaterial, SdfTextMaterialUniform};
+use crate::{GlyphMetrics, SdfFont, SdfTextMaterial, SdfTextMaterialUniform};
 
 #[derive(Default, Debug, Resource)]
 pub struct SdfFontAtlasRes {
-    atlases: HashMap<HandleId, SdfFontAtlas>,
+    atlases: HashMap<AssetId<SdfFont>, SdfFontAtlas>,
 }
 
 impl SdfFontAtlasRes {
-    pub fn font_atlas(&self, handle: HandleId) -> Option<&SdfFontAtlas> {
+    pub fn font_atlas(&self, handle: AssetId<SdfFont>) -> Option<&SdfFontAtlas> {
         self.atlases.get(&handle)
     }
 
     pub fn insert(
         &mut self,
-        font: HandleId,
+        font: AssetId<SdfFont>,
         face: &OwnedFace,
         params: SdfAtlasParams,
         textures: &mut Assets<Image>,
@@ -50,7 +50,7 @@ impl SdfFontAtlasRes {
             atlas.bitmap.raw_pixels().to_vec(),
             TextureFormat::Rgba32Float,
         );
-        image.sampler_descriptor = ImageSampler::linear();
+        image.sampler = ImageSampler::linear();
 
         let texture = textures.add(image);
         let material = materials.add(SdfTextMaterial {

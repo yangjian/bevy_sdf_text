@@ -7,7 +7,7 @@ pub struct SdfTextMaterialUniform {
     pub px_range: f32,
 }
 
-#[derive(AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
+#[derive(Asset, AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
 #[uuid = "6ad7223b-7ce9-4083-818b-84ed1b5ca806"]
 pub struct SdfTextMaterial {
     #[uniform(0)]
@@ -38,7 +38,7 @@ pub struct SdfRectMaterialUniform {
     pub border_color: Vec4,
 }
 
-#[derive(AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
+#[derive(Asset, AsBindGroup, TypeUuid, TypePath, Debug, Clone)]
 #[uuid = "59697CD1-6E29-40E4-A878-75DF4F19B5FF"]
 pub struct SdfRectMaterial {
     #[uniform(0)]

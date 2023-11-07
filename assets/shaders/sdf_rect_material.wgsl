@@ -1,4 +1,4 @@
-#import bevy_pbr::mesh_vertex_output MeshVertexOutput
+#import bevy_pbr::forward_io::VertexOutput
 
 struct SdfRectMaterial {
     size: vec2<f32>,
@@ -11,7 +11,7 @@ struct SdfRectMaterial {
 var<uniform> material: SdfRectMaterial;
 
 @fragment
-fn fragment(mesh: MeshVertexOutput) -> @location(0) vec4<f32> {
+fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let half_size = material.size * 0.5;
     let distance = distanceOfRoundedBox(mesh.uv, half_size, material.border_radius);
     let delta_per_pixel = length(vec2(dpdxFine(distance), dpdyFine(distance)));
