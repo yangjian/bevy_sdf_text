@@ -1,3 +1,4 @@
+use bevy::asset::load_internal_asset;
 use bevy::prelude::*;
 
 use crate::{SdfFont, SdfFontLoader};
@@ -12,6 +13,19 @@ pub struct SdfTextPlugin;
 
 impl Plugin for SdfTextPlugin {
     fn build(&self, app: &mut App) {
+        load_internal_asset!(
+            app,
+            SDF_TEXT_SHADER_HANDLE,
+            "shaders/sdf_text_material.wgsl",
+            Shader::from_wgsl
+        );
+        load_internal_asset!(
+            app,
+            SDF_RECT_SHADER_HANDLE,
+            "shaders/sdf_rect_material.wgsl",
+            Shader::from_wgsl
+        );
+
         app.init_asset::<SdfFont>()
             .register_type::<SdfText>()
             .register_type::<SdfTextSection>()

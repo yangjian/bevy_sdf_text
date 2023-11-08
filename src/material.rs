@@ -2,6 +2,9 @@ use bevy::prelude::*;
 use bevy::reflect::{TypePath, TypeUuid};
 use bevy::render::render_resource::{AsBindGroup, ShaderRef, ShaderType};
 
+pub const SDF_TEXT_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(20704338815944035659);
+pub const SDF_RECT_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(70563445263975664926);
+
 #[derive(Clone, Copy, Debug, ShaderType)]
 pub struct SdfTextMaterialUniform {
     pub px_range: f32,
@@ -22,7 +25,7 @@ pub struct SdfTextMaterial {
 
 impl Material for SdfTextMaterial {
     fn fragment_shader() -> ShaderRef {
-        "shaders/sdf_text_material.wgsl".into()
+        ShaderRef::Handle(SDF_TEXT_SHADER_HANDLE)
     }
 
     fn alpha_mode(&self) -> AlphaMode {
@@ -49,7 +52,7 @@ pub struct SdfRectMaterial {
 
 impl Material for SdfRectMaterial {
     fn fragment_shader() -> ShaderRef {
-        "shaders/sdf_rect_material.wgsl".into()
+        ShaderRef::Handle(SDF_RECT_SHADER_HANDLE)
     }
 
     fn alpha_mode(&self) -> AlphaMode {
