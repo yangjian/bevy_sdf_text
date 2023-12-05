@@ -178,7 +178,7 @@ impl SdfAtlas {
                 .ok_or_else(|| anyhow!("no framing for char {char:?}"))?;
 
             let mut bitmap = Bitmap::new(char_width, char_width);
-            shape.edge_coloring_simple(3.0, 0);
+            shape.edge_coloring_simple(3.0, 4099870759);
             shape.generate_mtsdf(&mut bitmap, framing, gen_config);
             shape.correct_sign(&mut bitmap, framing, fill_rule);
             shape.correct_msdf_error(&mut bitmap, framing, gen_config);
@@ -296,7 +296,7 @@ mod tests {
     fn test_sdf_atlas() {
         let _ = std::fs::create_dir("tmp");
 
-        for name in ["Roboto-Regular", "FiraSans-Regular"] {
+        for name in ["Roboto-Regular", "Barlow-Regular"] {
             let font_path = format!("assets/fonts/{}.ttf", name);
             let font_data = std::fs::read(&font_path).unwrap();
             let font = SdfFont::new(name.into(), font_data).unwrap();

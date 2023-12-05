@@ -18,24 +18,26 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut std_materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let firasans_font = assets.load("fonts/FiraSans-Regular.ttf");
-    let roboto_font = assets.load("fonts/MyRobotoSlab-Regular.ttf");
+    let barlow_font = assets.load("fonts/Barlow-Regular.ttf");
+    let barlow_bold_font = assets.load("fonts/Barlow-Bold.ttf");
+    let roboto_font = assets.load("fonts/Roboto-Regular.ttf");
+    let roboto_bold_font = assets.load("fonts/Roboto-Bold.ttf");
 
     commands.spawn(SdfTextBundle {
         text: SdfText {
             sections: vec![
                 SdfTextSection {
-                    value: "Hello, World!\n".into(),
+                    value: "Hello, World! VAR\n".into(),
                     style: SdfTextStyle {
-                        font: firasans_font,
+                        font: barlow_bold_font,
                         font_size: 2.0,
                         color: Color::SEA_GREEN,
                     },
                 },
                 SdfTextSection {
-                    value: "Good Morning, VAR!".into(),
+                    value: "Good Too!, VAR!".into(),
                     style: SdfTextStyle {
-                        font: roboto_font.clone(),
+                        font: roboto_bold_font,
                         font_size: 2.5,
                         color: Color::AQUAMARINE,
                     },
@@ -88,12 +90,13 @@ fn setup(
     ];
 
     for (i, anchor) in anchors.iter().enumerate() {
+        let font = [&barlow_font, &roboto_font][i % 2].clone();
         commands.spawn(SdfTextBundle {
             text: SdfText {
                 sections: vec![SdfTextSection {
                     value: format!("Hello, World! {anchor:?}"),
                     style: SdfTextStyle {
-                        font: roboto_font.clone(),
+                        font,
                         font_size: 2.0,
                         color: Color::SALMON,
                     },

@@ -96,17 +96,16 @@ impl GlyphMetrics {
 #[cfg(test)]
 mod tests {
     use owned_ttf_parser::PreParsedSubtables;
-    use ttf_parser::gpos::{PairAdjustment, PositioningSubtable, SingleAdjustment};
 
     use crate::SdfFont;
 
     #[test]
     fn test_font() {
         for name in [
+            "Barlow-Regular",
+            "Barlow-Bold",
             "Roboto-Regular",
-            "OpenSans-Regular",
-            "FiraSans-Regular",
-            "MyRobotoSlab-Regular",
+            "Roboto-Bold",
         ] {
             let font_path = format!("assets/fonts/{}.ttf", name);
             let font_data = std::fs::read(&font_path).unwrap();
@@ -115,53 +114,10 @@ mod tests {
 
             let tables = font.face_ref().tables();
             println!(
-                "gpos: {}, kern {}",
-                tables.gpos.is_some(),
+                "kern {}, gpos: {}",
                 tables.kern.is_some(),
+                tables.gpos.is_some(),
             );
-
-            let tables = font.face_ref().tables();
-            let gpos = tables.gpos.as_ref().unwrap();
-            for lookup in gpos.lookups {
-                for item in lookup.subtables.into_iter::<PositioningSubtable>() {
-                    match item {
-                        PositioningSubtable::Single(_) => println!("single table"),
-                        PositioningSubtable::Pair(_) => println!("pair table"),
-                        PositioningSubtable::Cursive(_) => println!("cursive table"),
-                        PositioningSubtable::Context(_) => println!("context table"),
-                        PositioningSubtable::ChainContext(_) => println!("chain context table"),
-                        _ => println!("unknown table"),
-                    };
-
-                    if let PositioningSubtable::Single(s) = item {
-                        match s {
-                            SingleAdjustment::Format1 { coverage: _, value } => {
-                                println!("single v1: {:?}", value)
-                            }
-                            SingleAdjustment::Format2 {
-                                coverage: _,
-                                values,
-                            } => {
-                                println!("single v2: {:?}", values)
-                            }
-                        }
-                    } else if let PositioningSubtable::Pair(p) = item {
-                        match p {
-                            PairAdjustment::Format1 {
-                                coverage: _,
-                                sets: _,
-                            } => {
-                                println!("pair v1")
-                            }
-                            PairAdjustment::Format2 {
-                                coverage: _,
-                                classes: _,
-                                matrix: _,
-                            } => println!("pair v2"),
-                        }
-                    }
-                }
-            }
 
             let faster_face: PreParsedSubtables<'_, _> = PreParsedSubtables::from(font.face);
             let g0 = faster_face.glyph_index('V').unwrap();
