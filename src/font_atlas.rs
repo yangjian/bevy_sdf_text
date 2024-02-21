@@ -7,6 +7,7 @@ use anyhow::{anyhow, Result};
 use bevy::asset::AssetId;
 use bevy::log;
 use bevy::prelude::{AlphaMode, Assets, Handle, Resource};
+use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use bevy::render::texture::{Image, ImageSampler};
 use msdfgen::{
@@ -49,6 +50,7 @@ impl SdfFontAtlasRes {
             TextureDimension::D2,
             atlas.bitmap.raw_pixels().to_vec(),
             TextureFormat::Rgba32Float,
+            RenderAssetUsages::RENDER_WORLD,
         );
         image.sampler = ImageSampler::linear();
 

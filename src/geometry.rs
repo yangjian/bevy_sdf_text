@@ -56,12 +56,12 @@ pub fn build_sdf_text_mesh(
         indices.push(n + 3);
     }
 
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    mesh.set_indices(Some(Indices::U16(indices)));
+    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default());
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
     mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_indices(Indices::U16(indices));
     mesh
 }
 
@@ -111,12 +111,12 @@ impl From<PlaneWithUV> for Mesh {
         ];
         let indices: Vec<u16> = vec![0, 1, 2, 0, 2, 3];
 
-        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-        mesh.set_indices(Some(Indices::U16(indices)));
+        let mut mesh = Mesh::new(PrimitiveTopology::TriangleList, Default::default());
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
         mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, colors);
         mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+        mesh.insert_indices(Indices::U16(indices));
         mesh
     }
 }

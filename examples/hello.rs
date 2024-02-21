@@ -1,13 +1,16 @@
 use bevy::core_pipeline::{fxaa::Fxaa, tonemapping::Tonemapping};
-use bevy::prelude::shape::UVSphere;
 use bevy::prelude::*;
+use bevy_egui::EguiPlugin;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 
 use bevy_sdf_text::*;
 
 fn main() {
     App::new()
-        .add_plugins((DefaultPlugins, PanOrbitCameraPlugin, SdfTextPlugin))
+        .add_plugins(DefaultPlugins)
+        .add_plugins(EguiPlugin)
+        .add_plugins(PanOrbitCameraPlugin)
+        .add_plugins(SdfTextPlugin)
         .add_systems(Startup, setup)
         .run();
 }
@@ -58,14 +61,7 @@ fn setup(
         ..Default::default()
     });
 
-    let dot_mesh = meshes.add(
-        UVSphere {
-            radius: 0.05,
-            sectors: 10,
-            stacks: 10,
-        }
-        .into(),
-    );
+    let dot_mesh = meshes.add(Sphere::new(0.05));
     let dot_material = std_materials.add(StandardMaterial {
         emissive: Color::WHITE,
         ..Default::default()

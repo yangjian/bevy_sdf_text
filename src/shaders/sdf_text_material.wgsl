@@ -4,13 +4,13 @@ struct SdfTextMaterial {
     px_range: f32,
 };
 
-@group(1) @binding(0)
+@group(2) @binding(0)
 var<uniform> material: SdfTextMaterial;
 
-@group(1) @binding(1)
+@group(2) @binding(1)
 var atlas_texture: texture_2d<f32>;
 
-@group(1) @binding(2)
+@group(2) @binding(2)
 var atlas_sampler: sampler;
 
 @fragment

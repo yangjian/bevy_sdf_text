@@ -233,15 +233,12 @@ pub(crate) fn update_text_background(
             .then_some(Visibility::Hidden)
             .unwrap_or_default();
 
-        let mesh = meshes.add(
-            PlaneWithUV {
-                rect,
-                color: background.color,
-                p00_uv: (size * -0.5).to_array(),
-                p11_uv: (size * 0.5).to_array(),
-            }
-            .into(),
-        );
+        let mesh = meshes.add(PlaneWithUV {
+            rect,
+            color: background.color,
+            p00_uv: (size * -0.5).to_array(),
+            p11_uv: (size * 0.5).to_array(),
+        });
         let material = materials.add(SdfRectMaterial {
             uniform: crate::SdfRectMaterialUniform {
                 size,
