@@ -100,7 +100,7 @@ mod tests {
     use crate::SdfFont;
 
     #[test]
-    fn test_font() {
+    fn test_font_info() {
         for name in [
             "Barlow-Regular",
             "Barlow-Bold",
