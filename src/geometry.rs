@@ -40,7 +40,7 @@ pub fn build_sdf_text_mesh(
         }
 
         for _ in 0..4 {
-            colors.push(section.color.as_rgba_f32()); // TODO: reduce memory usage
+            colors.push(section.color.to_linear().to_f32_array()); // TODO: reduce memory usage
         }
 
         uvs.push([atlas_glyph.tex_coord_p00[0], atlas_glyph.tex_coord_p11[1]]);
@@ -93,7 +93,7 @@ impl From<PlaneWithUV> for Mesh {
         let [min_x, min_y] = plane.rect.min.to_array();
         let [max_x, max_y] = plane.rect.max.to_array();
         let up = Vec3::Y.to_array();
-        let color = plane.color.as_rgba_f32();
+        let color = plane.color.to_linear().to_f32_array();
 
         let positions: Vec<[f32; 3]> = vec![
             [min_x, min_y, 0.0],

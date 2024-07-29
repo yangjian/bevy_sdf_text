@@ -47,11 +47,11 @@ pub struct SdfTextBackground {
 
 impl SdfTextBackground {
     pub fn is_empty(&self) -> bool {
-        self.color.a() == 0.0 && !self.has_border()
+        self.color.alpha() == 0.0 && !self.has_border()
     }
 
     pub fn has_border(&self) -> bool {
-        self.border_color.a() > 0.0 && self.border_size > 0.0
+        self.border_color.alpha() > 0.0 && self.border_size > 0.0
     }
 }
 
@@ -73,6 +73,7 @@ impl SdfTextBackgroundNodeInfo {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Event)]
 pub(crate) struct SdfFontAtlasReady(AssetId<SdfFont>);
 
@@ -113,7 +114,7 @@ pub(crate) fn update_text_mesh(
                 style: LayoutTextStyle {
                     font_index: index,
                     font_size: section.style.font_size,
-                    color: section.style.color.as_rgba_linear(),
+                    color: section.style.color.to_linear().into(),
                 },
             });
         }
@@ -244,7 +245,7 @@ pub(crate) fn update_text_background(
                 size,
                 border_radius: background.border_radius,
                 border_pixels: background.border_size,
-                border_color: background.border_color.as_rgba_f32().into(),
+                border_color: background.border_color.to_linear().to_vec4(),
             },
             alpha_mode: AlphaMode::Blend,
         });

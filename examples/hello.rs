@@ -1,3 +1,4 @@
+use bevy::color::palettes::css;
 use bevy::core_pipeline::{fxaa::Fxaa, tonemapping::Tonemapping};
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
@@ -34,7 +35,7 @@ fn setup(
                     style: SdfTextStyle {
                         font: barlow_bold_font,
                         font_size: 2.0,
-                        color: Color::SEA_GREEN,
+                        color: css::SEA_GREEN.into(),
                     },
                 },
                 SdfTextSection {
@@ -42,7 +43,7 @@ fn setup(
                     style: SdfTextStyle {
                         font: roboto_bold_font,
                         font_size: 2.5,
-                        color: Color::AQUAMARINE,
+                        color: css::AQUAMARINE.into(),
                     },
                 },
             ],
@@ -63,7 +64,7 @@ fn setup(
 
     let dot_mesh = meshes.add(Sphere::new(0.05));
     let dot_material = std_materials.add(StandardMaterial {
-        emissive: Color::WHITE,
+        emissive: Color::WHITE.into(),
         ..Default::default()
     });
 
@@ -94,7 +95,7 @@ fn setup(
                     style: SdfTextStyle {
                         font,
                         font_size: 2.0,
-                        color: Color::SALMON,
+                        color: css::SALMON.into(),
                     },
                 }],
                 alignment: SdfTextAlignment::Left,
@@ -103,10 +104,10 @@ fn setup(
             text_anchor: anchor.clone(),
             text_background: SdfTextBackground {
                 padding: Vec2::new(0.4, 0.2),
-                color: Color::INDIGO,
+                color: css::INDIGO.into(),
                 border_radius: 0.4,
                 border_size: 4.0,
-                border_color: Color::DARK_GREEN,
+                border_color: css::DARK_GREEN.into(),
                 ..Default::default()
             },
             transform: Transform::from_xyz(0.0, -2.5 * (i + 1) as f32, 0.0),

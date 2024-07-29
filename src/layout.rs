@@ -363,7 +363,7 @@ fn get_glyph_metrics(font: &FontArc, char: char) -> Option<GlyphMetrics> {
 mod tests {
     use ab_glyph::FontArc;
     use anyhow::Result;
-    use bevy::prelude::Color;
+    use bevy::color::palettes::css;
 
     use crate::SdfTextAlignment;
 
@@ -403,11 +403,11 @@ mod tests {
         let sections = vec![
             LayoutTextSection::new(
                 "Hello, World! \n".into(),
-                LayoutTextStyle::new(0, 20.0, Color::GREEN),
+                LayoutTextStyle::new(0, 20.0, css::GREEN.into()),
             ),
             LayoutTextSection::new(
                 "Good morning, VAR!".into(),
-                LayoutTextStyle::new(1, 30.0, Color::PURPLE),
+                LayoutTextStyle::new(1, 30.0, css::PURPLE.into()),
             ),
         ];
 
