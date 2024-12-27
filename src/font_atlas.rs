@@ -5,11 +5,11 @@ use std::path::Path;
 use ab_glyph::FontArc;
 use anyhow::{anyhow, Result};
 use bevy::asset::AssetId;
+use bevy::image::{Image, ImageSampler};
 use bevy::log;
 use bevy::prelude::{AlphaMode, Assets, Handle, Resource};
 use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use bevy::render::texture::{Image, ImageSampler};
 use msdfgen::{
     Bitmap, Bound, FillRule, FontExt, Framing, Gray, MsdfGeneratorConfig, Projection, Range, Rgba,
     Vector2, MID_VALUE,

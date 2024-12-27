@@ -122,23 +122,23 @@ pub(crate) fn update_text_mesh(
         let layout_output = run_layout(&layout_input);
 
         let child_id = commands
-            .spawn((Name::new("SdfTextContainer"), SpatialBundle::default()))
+            .spawn((
+                Name::new("SdfTextContainer"),
+                Transform::default(),
+                Visibility::default(),
+            ))
             .with_children(|parent| {
                 for (index, section) in layout_output.sections.iter().enumerate() {
                     // TODO: merge meshes with same font
                     let atlas = &text_atlases[index];
                     let mesh = build_sdf_text_mesh(section, &atlas.glyphs);
-                    parent
-                        .spawn(MaterialMeshBundle {
-                            mesh: meshes.add(mesh),
-                            material: atlas.material.clone(),
-                            ..default()
-                        })
-                        .insert((
-                            Name::new("SdfTextSection"),
-                            NotShadowCaster,
-                            NotShadowReceiver,
-                        ));
+                    parent.spawn((
+                        Name::new("SdfTextSection"),
+                        Mesh3d(meshes.add(mesh)),
+                        MeshMaterial3d(atlas.material.clone()),
+                        NotShadowCaster,
+                        NotShadowReceiver,
+                    ));
                 }
             })
             .id();
@@ -251,15 +251,12 @@ pub(crate) fn update_text_background(
         });
 
         let node = commands
-            .spawn(MaterialMeshBundle {
-                mesh,
-                material,
-                visibility,
-                transform: Transform::from_xyz(0.0, 0.0, background.z_offset.unwrap_or(-0.001)),
-                ..Default::default()
-            })
-            .insert((
+            .spawn((
                 Name::new("SdfTextBackground"),
+                Mesh3d(mesh),
+                MeshMaterial3d(material),
+                Transform::from_xyz(0.0, 0.0, background.z_offset.unwrap_or(-0.001)),
+                visibility,
                 NotShadowCaster,
                 NotShadowReceiver,
             ))

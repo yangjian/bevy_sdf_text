@@ -68,11 +68,10 @@ fn setup(
         ..Default::default()
     });
 
-    commands.spawn(MaterialMeshBundle {
-        mesh: dot_mesh.clone(),
-        material: dot_material.clone(),
-        ..default()
-    });
+    commands.spawn((
+        Mesh3d(dot_mesh.clone()),
+        MeshMaterial3d(dot_material.clone()),
+    ));
 
     let anchors: Vec<SdfTextAnchor> = vec![
         SdfTextAnchor::BottomLeft,
@@ -114,19 +113,18 @@ fn setup(
             ..default()
         });
 
-        commands.spawn(MaterialMeshBundle {
-            mesh: dot_mesh.clone(),
-            material: dot_material.clone(),
-            transform: Transform::from_xyz(0.0, -2.5 * (i + 1) as f32, 0.0),
-            ..default()
-        });
+        commands.spawn((
+            Mesh3d(dot_mesh.clone()),
+            MeshMaterial3d(dot_material.clone()),
+            Transform::from_xyz(0.0, -2.5 * (i + 1) as f32, 0.0),
+        ));
     }
 
     commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(0.0, 0.0, 60.0).looking_at(Vec3::ZERO, Vec3::Y),
-            tonemapping: Tonemapping::None,
-            ..default()
-        })
+        .spawn((
+            Camera3d::default(),
+            Transform::from_xyz(0.0, 0.0, 60.0).looking_at(Vec3::ZERO, Vec3::Y),
+            Tonemapping::None,
+        ))
         .insert((PanOrbitCamera::default(), Fxaa::default()));
 }

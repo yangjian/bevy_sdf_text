@@ -1,4 +1,4 @@
-use bevy::asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext};
+use bevy::asset::{io::Reader, AssetLoader, LoadContext};
 use thiserror::Error;
 
 use crate::SdfFont;
@@ -23,11 +23,11 @@ impl AssetLoader for SdfFontLoader {
     type Settings = ();
     type Error = SdfFontLoaderError;
 
-    fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext,
+    fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext,
     ) -> impl bevy::utils::ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
             let name = load_context
