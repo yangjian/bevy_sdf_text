@@ -22,10 +22,10 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut std_materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    let barlow_font = assets.load("fonts/Barlow-Regular.ttf");
-    let barlow_bold_font = assets.load("fonts/Barlow-Bold.ttf");
-    let roboto_font = assets.load("fonts/Roboto-Regular.ttf");
-    let roboto_bold_font = assets.load("fonts/Roboto-Bold.ttf");
+    let barlow_font = assets.load("fonts/Barlow-Regular.sdfb");
+    let barlow_bold_font = assets.load("fonts/Barlow-Bold.sdfb");
+    let roboto_font = assets.load("fonts/Roboto-Regular.sdfb");
+    let roboto_bold_font = assets.load("fonts/Roboto-Bold.sdfb");
 
     commands.spawn(SdfTextBundle {
         text: SdfText {

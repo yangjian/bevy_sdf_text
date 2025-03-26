@@ -19,3 +19,6 @@ pub use layout::*;
 pub use material::*;
 pub use plugin::*;
 pub use text::*;
+
+#[cfg(feature = "writer")]
+pub mod font_writer;

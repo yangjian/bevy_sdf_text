@@ -27,24 +27,18 @@ impl AssetLoader for SdfFontLoader {
         &self,
         reader: &mut dyn Reader,
         _settings: &Self::Settings,
-        load_context: &mut LoadContext,
+        _load_context: &mut LoadContext,
     ) -> impl bevy::utils::ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
-            let name = load_context
-                .path()
-                .file_name()
-                .and_then(|o| o.to_str())
-                .unwrap_or_default();
-
             let mut bytes = Vec::new();
             reader.read_to_end(&mut bytes).await?;
 
-            let font = SdfFont::new(name.to_owned(), bytes)?;
+            let font = SdfFont::from_slice(&bytes)?;
             Ok(font)
         })
     }
 
     fn extensions(&self) -> &[&str] {
-        &["ttf", "otf"]
+        &["sdfb"]
     }
 }

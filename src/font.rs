@@ -1,38 +1,43 @@
-use anyhow::{anyhow, Result};
+use std::path::Path;
+
+use anyhow::{Context, Result};
 use bevy::prelude::{Asset, Rect, Vec2};
 use bevy::reflect::TypePath;
-use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace};
+use owned_ttf_parser::{Face, GlyphId};
+use serde::{Deserialize, Serialize};
 
-#[derive(Asset, TypePath, Debug)]
+use crate::SdfAtlas;
+
+#[derive(Asset, TypePath, Debug, Serialize, Deserialize)]
 pub struct SdfFont {
     pub name: String,
-    pub face: OwnedFace,
+    pub data: Vec<u8>,
     pub metrics: FontMetrics,
+    pub atlas: SdfAtlas,
 }
 
 impl SdfFont {
-    pub fn new(name: String, data: Vec<u8>) -> Result<Self> {
-        let face: OwnedFace = OwnedFace::from_vec(data, 0)?;
-        let metrics = FontMetrics::new(face.as_face_ref())
-            .ok_or_else(|| anyhow!("unable to get font metrics"))?;
-
-        Ok(Self {
-            name,
-            face,
-            metrics,
-        })
+    pub fn from_slice(data: &[u8]) -> Result<Self> {
+        rmp_serde::from_slice(data).context("deserialize SDF font")
     }
 
-    pub fn face_ref(&self) -> &Face {
-        self.face.as_face_ref()
+    pub fn load_file<P: AsRef<Path>>(path: P) -> Result<Self> {
+        let data = std::fs::read(path).context("read file")?;
+        Self::from_slice(&data)
     }
 
-    pub fn data(&self) -> Vec<u8> {
-        self.face.as_slice().into()
+    pub fn to_vec(&self) -> Result<Vec<u8>> {
+        rmp_serde::to_vec(self).context("serialize SDF font")
+    }
+
+    pub fn export_file<P: AsRef<Path>>(&self, path: P) -> Result<()> {
+        let data = self.to_vec()?;
+        std::fs::write(path, &data).context("write data")?;
+        Ok(())
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct FontMetrics {
     pub glyph_count: u32,
     pub units_per_em: f32,
@@ -58,7 +63,7 @@ impl FontMetrics {
 }
 
 // Glyph Metrics: https://freetype.org/freetype2/docs/glyphs/glyphs-3.html
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct GlyphMetrics {
     pub advance: f32,
     pub bearing: f32,
@@ -90,40 +95,5 @@ impl GlyphMetrics {
             position.x + self.x_max * scale.x,
             position.y + self.y_max * scale.y,
         )
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use owned_ttf_parser::PreParsedSubtables;
-
-    use crate::SdfFont;
-
-    #[test]
-    fn test_font_info() {
-        for name in [
-            "Barlow-Regular",
-            "Barlow-Bold",
-            "Roboto-Regular",
-            "Roboto-Bold",
-        ] {
-            let font_path = format!("assets/fonts/{}.ttf", name);
-            let font_data = std::fs::read(&font_path).unwrap();
-            let font = SdfFont::new(name.into(), font_data).unwrap();
-            println!("font {}: {:?}", font.name, font.metrics);
-
-            let tables = font.face_ref().tables();
-            println!(
-                "kern {}, gpos: {}",
-                tables.kern.is_some(),
-                tables.gpos.is_some(),
-            );
-
-            let faster_face: PreParsedSubtables<'_, _> = PreParsedSubtables::from(font.face);
-            let g0 = faster_face.glyph_index('V').unwrap();
-            let g1 = faster_face.glyph_index('A').unwrap();
-            let kern = faster_face.glyphs_hor_kerning(g0, g1);
-            println!("VA kern: {kern:?}");
-        }
     }
 }

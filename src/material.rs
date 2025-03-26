@@ -8,6 +8,20 @@ pub const SDF_RECT_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(705634
 #[derive(Clone, Copy, Debug, ShaderType)]
 pub struct SdfTextMaterialUniform {
     pub px_range: f32,
+    _padding0: u32,
+    _padding1: u32,
+    _padding2: u32,
+}
+
+impl SdfTextMaterialUniform {
+    pub fn new(px_range: f32) -> Self {
+        Self {
+            px_range,
+            _padding0: 0,
+            _padding1: 0,
+            _padding2: 0,
+        }
+    }
 }
 
 #[derive(Asset, AsBindGroup, TypePath, Debug, Clone)]

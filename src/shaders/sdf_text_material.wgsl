@@ -2,6 +2,9 @@
 
 struct SdfTextMaterial {
     px_range: f32,
+    padding0: u32,
+    padding1: u32,
+    padding2: u32,
 };
 
 @group(2) @binding(0)

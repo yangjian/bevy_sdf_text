@@ -283,13 +283,7 @@ pub(crate) fn setup_font_atlas(
     for event in font_events.read() {
         if let AssetEvent::Added { id } = event {
             let font = fonts.get(*id).unwrap();
-            match font_atlas_res.insert(
-                *id,
-                &font.face,
-                Default::default(), // TODO
-                textures.as_mut(),
-                materials.as_mut(),
-            ) {
+            match font_atlas_res.insert(*id, font, textures.as_mut(), materials.as_mut()) {
                 Ok(_) => {
                     log::info!("inserted atlas for font {}", font.name);
                     atlas_events.send(SdfFontAtlasReady(*id));
