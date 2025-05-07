@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::{anyhow, Context, Result};
 use clap::Parser;
+use svg::node::element::{path::Data as SvgData, Path as SvgPath};
 
 use bevy_sdf_text::{printable_ascii_chars, SdfAtlasParams, SdfFont};
 
@@ -44,8 +45,6 @@ pub fn main() -> Result<()> {
     }
 
     for input in cli.input.iter() {
-        let font_data = std::fs::read(input).context("read font file")?;
-
         let name = if let Some(str) = cli.name.as_ref() {
             str.to_owned()
         } else if let Some(o) = input.file_stem() {
@@ -62,8 +61,18 @@ pub fn main() -> Result<()> {
             return Err(anyhow!("invalid input"));
         };
 
+        if input.to_str() == Some("SOCCER") {
+            let svg = generate_soccer_field();
+            let path = out_dir.join(format!("{name}.svg"));
+            svg::save(&path, &svg)?;
+            log::info!("Soccer: exported file {path:?}");
+            continue;
+        }
+
         let atlas_params: SdfAtlasParams = Default::default();
         let chars = printable_ascii_chars();
+
+        let font_data = std::fs::read(input).context("read font file")?;
         let font = SdfFont::create(&name, font_data, atlas_params, chars).unwrap();
 
         let bin_data = font.to_vec().unwrap();
@@ -89,4 +98,77 @@ pub fn main() -> Result<()> {
 
     log::info!("done!");
     Ok(())
+}
+
+fn generate_soccer_field() -> svg::Document {
+    let [width, height]: [f32; 2] = [360.0, 240.0];
+    let line_width: f32 = 1.0 / 3.0;
+    let [half_width, half_height] = [width * 0.5, height * 0.5];
+    let mut document = svg::Document::new().set(
+        "viewBox",
+        (
+            -half_width - 12.0,
+            -half_height - 8.0,
+            width + 12.0 * 2.0,
+            height + 8.0 * 2.0,
+        ),
+    );
+
+    let mut data = SvgData::new();
+
+    // full court
+    data = data
+        .move_to((-half_width, -half_height))
+        .line_by((width, 0))
+        .line_by((0, height))
+        .line_by((-width, 0))
+        .close();
+
+    data = data
+        .move_to((-half_width + line_width, -half_height + line_width))
+        .line_by((0, height - 2.0 * line_width))
+        .line_by((half_width - 1.5 * line_width, 0))
+        .line_to((line_width * -0.5, 30.0))
+        .elliptical_arc_to((30.0, 30.0, 0.0, 1.0, 1.0, line_width * -0.5, -30.0))
+        .line_to((line_width * -0.5, -half_height + line_width))
+        .close();
+
+    data = data
+        .move_to((line_width * 0.5, -half_height + line_width))
+        .line_to((line_width * 0.5, -30.0))
+        .elliptical_arc_to((30.0, 30.0, 0.0, 0.0, 1.0, line_width * 0.5, 30.0))
+        .line_to((line_width * 0.5, half_height - line_width))
+        .line_by((half_width - 1.5 * line_width, 0))
+        .line_by((0, -height + 2.0 * line_width))
+        .close();
+
+    data = data
+        .move_to((-line_width * 0.5, -30.0 + line_width))
+        .elliptical_arc_to((
+            30.0 - line_width,
+            30.0 - line_width,
+            0.0,
+            1.0,
+            0.0,
+            -line_width * 0.5,
+            30.0 - line_width,
+        ))
+        .close();
+
+    data = data
+        .move_to((line_width * 0.5, 30.0 - line_width))
+        .elliptical_arc_to((
+            30.0 - line_width,
+            30.0 - line_width,
+            0.0,
+            1.0,
+            0.0,
+            line_width * 0.5,
+            -30.0 + line_width,
+        ))
+        .close();
+
+    document = document.add(SvgPath::new().set("d", data));
+
+    document
 }

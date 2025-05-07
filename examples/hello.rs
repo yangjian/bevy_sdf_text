@@ -9,7 +9,9 @@ use bevy_sdf_text::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(EguiPlugin)
+        .add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: false,
+        })
         .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(SdfTextPlugin)
         .add_systems(Startup, setup)

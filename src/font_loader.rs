@@ -1,4 +1,5 @@
 use bevy::asset::{io::Reader, AssetLoader, LoadContext};
+use bevy::tasks::ConditionalSendFuture;
 use thiserror::Error;
 
 use crate::SdfFont;
@@ -28,7 +29,7 @@ impl AssetLoader for SdfFontLoader {
         reader: &mut dyn Reader,
         _settings: &Self::Settings,
         _load_context: &mut LoadContext,
-    ) -> impl bevy::utils::ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
+    ) -> impl ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
             let mut bytes = Vec::new();
             reader.read_to_end(&mut bytes).await?;

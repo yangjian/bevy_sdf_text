@@ -93,10 +93,10 @@ pub(crate) fn update_text_mesh(
             .filter_map(|o| font_atlas_res.font_atlas(o.style.font.id()))
             .collect();
         if text_atlases.len() != text.sections.len() {
+            commands.entity(entity).despawn_related::<Children>();
             commands
                 .entity(entity)
-                .despawn_descendants()
-                .clear_children()
+                .remove::<Children>()
                 .remove::<SdfTextState>();
             return false;
         }
@@ -143,10 +143,10 @@ pub(crate) fn update_text_mesh(
             })
             .id();
 
+        commands.entity(entity).despawn_related::<Children>();
         commands
             .entity(entity)
-            .despawn_descendants()
-            .clear_children()
+            .remove::<Children>()
             .add_child(child_id)
             .insert(SdfTextState { layout_output })
             .insert(SdfTextBackgroundNodeInfo::default());
@@ -263,7 +263,7 @@ pub(crate) fn update_text_background(
             .id();
 
         if let Some((_, entity)) = node_info.0.take() {
-            commands.entity(entity).remove_parent().despawn();
+            commands.entity(entity).remove::<ChildOf>().despawn();
         }
 
         commands.entity(*container_entity).add_child(node);
@@ -286,7 +286,7 @@ pub(crate) fn setup_font_atlas(
             match font_atlas_res.insert(*id, font, textures.as_mut(), materials.as_mut()) {
                 Ok(_) => {
                     log::info!("inserted atlas for font {}", font.name);
-                    atlas_events.send(SdfFontAtlasReady(*id));
+                    atlas_events.write(SdfFontAtlasReady(*id));
                 }
                 Err(err) => log::error!("can't insert altas for font {}: {err}", font.name),
             }
