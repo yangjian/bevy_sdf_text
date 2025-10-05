@@ -34,7 +34,7 @@ impl Plugin for SdfTextPlugin {
             .register_type::<SdfTextBackgroundNodeInfo>()
             .init_asset_loader::<SdfFontLoader>()
             .init_resource::<SdfFontAtlasRes>()
-            .init_resource::<Events<SdfFontAtlasReady>>()
+            .init_resource::<Messages<SdfFontAtlasReady>>()
             .add_plugins(MaterialPlugin::<SdfTextMaterial>::default())
             .add_plugins(MaterialPlugin::<SdfRectMaterial>::default())
             .add_systems(First, setup_font_atlas)

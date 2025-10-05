@@ -1,12 +1,13 @@
-use bevy::asset::weak_handle;
+use bevy::asset::uuid_handle;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
-use bevy::render::render_resource::{AsBindGroup, ShaderRef, ShaderType};
+use bevy::render::render_resource::{AsBindGroup, ShaderType};
+use bevy::shader::ShaderRef;
 
 pub const SDF_TEXT_SHADER_HANDLE: Handle<Shader> =
-    weak_handle!("ED699522-1AA7-4DA0-871C-AAD7D201A821");
+    uuid_handle!("ED699522-1AA7-4DA0-871C-AAD7D201A821");
 pub const SDF_RECT_SHADER_HANDLE: Handle<Shader> =
-    weak_handle!("555686D4-71A7-4BDD-B625-124934555F37");
+    uuid_handle!("555686D4-71A7-4BDD-B625-124934555F37");
 
 #[derive(Clone, Copy, Debug, ShaderType)]
 pub struct SdfTextMaterialUniform {

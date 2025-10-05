@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
+use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::log;
-use bevy::pbr::{NotShadowCaster, NotShadowReceiver};
 use bevy::prelude::*;
 
 use crate::{build_sdf_text_mesh, layout::*};
@@ -74,13 +74,13 @@ impl SdfTextBackgroundNodeInfo {
 }
 
 #[allow(dead_code)]
-#[derive(Event)]
+#[derive(Message)]
 pub(crate) struct SdfFontAtlasReady(AssetId<SdfFont>);
 
 #[allow(clippy::type_complexity)]
 pub(crate) fn update_text_mesh(
     font_atlas_res: Res<SdfFontAtlasRes>,
-    _atlas_events: EventReader<SdfFontAtlasReady>,
+    _atlas_events: MessageReader<SdfFontAtlasReady>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut text_query: Query<(Entity, Ref<SdfText>), Or<(Without<SdfTextState>, Changed<SdfText>)>>,
@@ -229,10 +229,11 @@ pub(crate) fn update_text_background(
 
         let size = rect.size();
 
-        let visibility = background
-            .is_empty()
-            .then_some(Visibility::Hidden)
-            .unwrap_or_default();
+        let visibility = if background.is_empty() {
+            Visibility::Hidden
+        } else {
+            Default::default()
+        };
 
         let mesh = meshes.add(PlaneWithUV {
             rect,
@@ -274,8 +275,8 @@ pub(crate) fn update_text_background(
 /// Auto setup font atlas on SdfFont loaded event
 pub(crate) fn setup_font_atlas(
     fonts: Res<Assets<SdfFont>>,
-    mut font_events: EventReader<AssetEvent<SdfFont>>,
-    mut atlas_events: EventWriter<SdfFontAtlasReady>,
+    mut font_events: MessageReader<AssetEvent<SdfFont>>,
+    mut atlas_events: MessageWriter<SdfFontAtlasReady>,
     mut textures: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<SdfTextMaterial>>,
     mut font_atlas_res: ResMut<SdfFontAtlasRes>,

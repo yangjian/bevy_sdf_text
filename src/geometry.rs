@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use bevy::mesh::Indices;
 use bevy::prelude::*;
-use bevy::render::mesh::Indices;
 use bevy::render::render_resource::PrimitiveTopology;
 
 use crate::{PositionedSection, SdfAtlasGlyph};

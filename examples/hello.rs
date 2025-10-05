@@ -1,5 +1,6 @@
+use bevy::anti_alias::fxaa::Fxaa;
 use bevy::color::palettes::css;
-use bevy::core_pipeline::{fxaa::Fxaa, tonemapping::Tonemapping};
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use bevy::prelude::*;
 use bevy_egui::EguiPlugin;
 use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
@@ -9,9 +10,7 @@ use bevy_sdf_text::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(EguiPlugin {
-            enable_multipass_for_primary_context: false,
-        })
+        .add_plugins(EguiPlugin::default())
         .add_plugins(PanOrbitCameraPlugin)
         .add_plugins(SdfTextPlugin)
         .add_systems(Startup, setup)
@@ -127,6 +126,7 @@ fn setup(
             Camera3d::default(),
             Transform::from_xyz(0.0, 0.0, 60.0).looking_at(Vec3::ZERO, Vec3::Y),
             Tonemapping::None,
+            Fxaa::default(),
         ))
-        .insert((PanOrbitCamera::default(), Fxaa::default()));
+        .insert(PanOrbitCamera::default());
 }

@@ -3,10 +3,9 @@ use std::io::Cursor;
 
 use ab_glyph::FontArc;
 use anyhow::{anyhow, Result};
-use bevy::asset::AssetId;
+use bevy::asset::{AssetId, RenderAssetUsages};
 use bevy::image::{Image, ImageSampler};
 use bevy::prelude::{AlphaMode, Assets, Handle, Resource};
-use bevy::render::render_asset::RenderAssetUsages;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use image::{
     DynamicImage, EncodableLayout, ImageBuffer, ImageFormat, ImageReader, Rgba, Rgba32FImage,
