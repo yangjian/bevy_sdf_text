@@ -248,7 +248,7 @@ pub(crate) fn update_text_background(
                 border_pixels: background.border_size,
                 border_color: background.border_color.to_linear().to_vec4(),
             },
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Premultiplied,
         });
 
         let node = commands
@@ -256,7 +256,6 @@ pub(crate) fn update_text_background(
                 Name::new("SdfTextBackground"),
                 Mesh3d(mesh),
                 MeshMaterial3d(material),
-                Transform::from_xyz(0.0, 0.0, background.z_offset.unwrap_or(-0.001)),
                 visibility,
                 NotShadowCaster,
                 NotShadowReceiver,

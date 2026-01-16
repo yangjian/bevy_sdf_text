@@ -17,7 +17,7 @@ pub fn build_sdf_text_mesh(
     let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(n * 4);
     let mut indices: Vec<u16> = Vec::with_capacity(n * 6);
 
-    let up = Vec3::Y.to_array();
+    let up = Vec3::Z.to_array();
 
     for glyph in section.glyphs.iter() {
         let atlas_glyph = match atlas_glyphs.get(&glyph.char) {
@@ -92,14 +92,15 @@ impl From<PlaneWithUV> for Mesh {
     fn from(plane: PlaneWithUV) -> Self {
         let [min_x, min_y] = plane.rect.min.to_array();
         let [max_x, max_y] = plane.rect.max.to_array();
+        let z = 0.0f32;
         let up = Vec3::Y.to_array();
         let color = plane.color.to_linear().to_f32_array();
 
         let positions: Vec<[f32; 3]> = vec![
-            [min_x, min_y, 0.0],
-            [max_x, min_y, 0.0],
-            [max_x, max_y, 0.0],
-            [min_x, max_y, 0.0],
+            [min_x, min_y, z],
+            [max_x, min_y, z],
+            [max_x, max_y, z],
+            [min_x, max_y, z],
         ];
         let normals: Vec<[f32; 3]> = vec![up, up, up, up];
         let colors: Vec<[f32; 4]> = vec![color, color, color, color];

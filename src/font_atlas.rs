@@ -57,7 +57,7 @@ impl SdfFontAtlasRes {
         let material = materials.add(SdfTextMaterial {
             uniform: SdfTextMaterialUniform::new(atlas.px_range()),
             atlas_texture: texture.clone(),
-            alpha_mode: AlphaMode::Blend,
+            alpha_mode: AlphaMode::Premultiplied,
         });
 
         self.atlases.insert(

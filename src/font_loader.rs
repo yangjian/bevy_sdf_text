@@ -1,10 +1,11 @@
 use bevy::asset::{io::Reader, AssetLoader, LoadContext};
+use bevy::reflect::TypePath;
 use bevy::tasks::ConditionalSendFuture;
 use thiserror::Error;
 
 use crate::SdfFont;
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct SdfFontLoader;
 
 #[non_exhaustive]

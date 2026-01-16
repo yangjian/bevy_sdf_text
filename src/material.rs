@@ -74,4 +74,8 @@ impl Material for SdfRectMaterial {
     fn alpha_mode(&self) -> AlphaMode {
         self.alpha_mode
     }
+
+    fn depth_bias(&self) -> f32 {
+        -1e-3
+    }
 }
