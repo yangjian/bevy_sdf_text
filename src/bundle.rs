@@ -73,14 +73,18 @@ impl SdfTextBackgroundNodeInfo {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Message)]
-pub(crate) struct SdfFontAtlasReady(AssetId<SdfFont>);
+pub struct SdfFontAtlasReady(pub AssetId<SdfFont>);
+
+/// placeholder system which runs before sdf text mesh update
+/// external users can use it to make sure text mesh is updated in same frame
+pub fn before_sdf_update_text_mesh() {
+    // nothing
+}
 
 #[allow(clippy::type_complexity)]
 pub(crate) fn update_text_mesh(
     font_atlas_res: Res<SdfFontAtlasRes>,
-    _atlas_events: MessageReader<SdfFontAtlasReady>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut text_query: Query<(Entity, Ref<SdfText>), Or<(Without<SdfTextState>, Changed<SdfText>)>>,

@@ -38,7 +38,10 @@ impl Plugin for SdfTextPlugin {
             .add_plugins(MaterialPlugin::<SdfTextMaterial>::default())
             .add_plugins(MaterialPlugin::<SdfRectMaterial>::default())
             .add_systems(First, setup_font_atlas)
-            .add_systems(PreUpdate, update_text_mesh)
+            .add_systems(
+                PreUpdate,
+                (before_sdf_update_text_mesh, update_text_mesh).chain(),
+            )
             .add_systems(Update, (update_text_anchor, update_text_background));
     }
 }
