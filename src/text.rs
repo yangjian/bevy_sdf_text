@@ -56,7 +56,7 @@ impl SdfTextSection {
     }
 }
 
-#[derive(Clone, Debug, Reflect)]
+#[derive(Clone, Debug, PartialEq, Reflect)]
 pub struct SdfTextStyle {
     pub font: Handle<SdfFont>,
 
