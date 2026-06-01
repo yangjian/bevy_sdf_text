@@ -34,7 +34,7 @@ fn setup(
                 SdfTextSection {
                     value: "Hello, World! VAR\n".into(),
                     style: SdfTextStyle {
-                        font: barlow_bold_font,
+                        font: barlow_bold_font.clone(),
                         font_size: 2.0,
                         color: css::SEA_GREEN.into(),
                     },
@@ -42,7 +42,7 @@ fn setup(
                 SdfTextSection {
                     value: "Good Too!, VAR!".into(),
                     style: SdfTextStyle {
-                        font: roboto_bold_font,
+                        font: roboto_bold_font.clone(),
                         font_size: 2.5,
                         color: css::AQUAMARINE.into(),
                     },
@@ -87,7 +87,14 @@ fn setup(
     ];
 
     for (i, anchor) in anchors.iter().enumerate() {
-        let font = [&barlow_font, &roboto_font][i % 2].clone();
+        let font = [
+            &barlow_font,
+            &barlow_bold_font,
+            &roboto_font,
+            &roboto_bold_font,
+        ][i % 4]
+            .clone();
+        let alpha = ((i % 4) as f32 + 1.0) / 4.0;
         commands.spawn(SdfTextBundle {
             text: SdfText {
                 sections: vec![SdfTextSection {
@@ -95,7 +102,7 @@ fn setup(
                     style: SdfTextStyle {
                         font,
                         font_size: 2.0,
-                        color: css::SALMON.into(),
+                        color: css::SALMON.with_alpha(alpha).into(),
                     },
                 }],
                 alignment: SdfTextAlignment::Left,

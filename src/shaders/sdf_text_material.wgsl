@@ -28,9 +28,8 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
     let to_pixels = material.px_range * inverseSqrt(dx * dx + dy * dy);
 
     let signed_distance = sample_msdf(mesh.uv) - 0.5;
-    // let opacity = clamp(signed_distance * to_pixels + 0.5, 0.0, 1.0);
-    let opacity = smoothstep(-0.5, 0.5, signed_distance * to_pixels);
-    return mix(vec4<f32>(0.0), mesh.color, opacity);
+    let opacity = smoothstep(-0.5, 0.5, signed_distance * to_pixels) * mesh.color.a;
+    return vec4<f32>(mesh.color.rgb * opacity, opacity);
 }
 
 fn sample_msdf(texcoord: vec2f) -> f32 {
