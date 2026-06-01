@@ -94,7 +94,7 @@ fn setup(
             &roboto_bold_font,
         ][i % 4]
             .clone();
-        let alpha = ((i % 4) as f32 + 1.0) / 4.0;
+        let alpha = ((i % 4) as f32 + 0.5) / 4.0;
         commands.spawn(SdfTextBundle {
             text: SdfText {
                 sections: vec![SdfTextSection {
@@ -114,7 +114,7 @@ fn setup(
                 color: css::INDIGO.into(),
                 border_radius: 0.4,
                 border_size: 4.0,
-                border_color: css::DARK_GREEN.into(),
+                border_color: css::DARK_GREEN.with_alpha(alpha).into(),
                 ..Default::default()
             },
             transform: Transform::from_xyz(0.0, -2.5 * (i + 1) as f32, 0.0),

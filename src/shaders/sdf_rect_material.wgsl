@@ -18,13 +18,14 @@ fn fragment(mesh: VertexOutput) -> @location(0) vec4<f32> {
 
     let low = -(material.border_size + 0.5) * delta_per_pixel;
     let high = low + delta_per_pixel;
-    var opacity = smoothstep(low, high, distance);
-    var color = mix(vec4<f32>(mesh.color), material.border_color, opacity);
+    let t0 = smoothstep(low, high, distance);
 
-    opacity = smoothstep(-delta_per_pixel * 0.5, delta_per_pixel * 0.5, distance);
-    color = mix(color, vec4<f32>(0.0), opacity);
+    let mesh_color = straight_to_premultiplied(mesh.color);
+    let border_color = straight_to_premultiplied(material.border_color);
+    let color = mix(mesh_color, border_color, t0);
 
-    return color;
+    let t1 = smoothstep(-delta_per_pixel * 0.5, delta_per_pixel * 0.5, distance);
+    return mix(color, vec4<f32>(0.0), t1);
 }
 
 fn distanceOfRoundedBox(pos: vec2<f32>, half_size: vec2<f32>, radius: f32) -> f32 {
@@ -32,4 +33,9 @@ fn distanceOfRoundedBox(pos: vec2<f32>, half_size: vec2<f32>, radius: f32) -> f3
     let outside_distance = length(max(q, vec2<f32>(0.0)));
     let inside_distance = min(max(q.x, q.y), 0.0);
     return outside_distance + inside_distance - radius;
+}
+
+// Helper function to convert straight alpha to premultiplied alpha
+fn straight_to_premultiplied(color: vec4<f32>) -> vec4<f32> {
+    return vec4<f32>(color.rgb * color.a, color.a);
 }
