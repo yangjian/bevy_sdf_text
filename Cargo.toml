@@ -13,7 +13,7 @@ required-features = ["writer"]
 [dependencies]
 anyhow = "1.0.72"
 ab_glyph = "0.2.32"
-bevy = { version = "0.18.0", default-features = false, features = [
+bevy = { version = "0.19.0", default-features = false, features = [
     "std",
     "async_executor",
     "bevy_core_pipeline",
@@ -42,18 +42,19 @@ clap = { version = "4.5.26", features = ["derive"], optional = true }
 env_logger = { version = "0.11.6", optional = true }
 log = { version = "0.4", optional = true }
 svg = { version = "0.18.0", optional = true }
+ttf-parser-msdf = { package = "ttf-parser", version = "0.18", optional = true }
 
 [dev-dependencies]
-bevy = { version = "0.18.0", default-features = false, features = [
+bevy = { version = "0.19.0", default-features = false, features = [
     "bevy_anti_alias",
     "bevy_picking",
     "bevy_post_process",
     "bevy_winit",
     "multi_threaded",
 ] }
-bevy_egui = "0.39.0"
-bevy_panorbit_camera = { version = "0.34.0", features = ["bevy_egui"] }
+bevy_egui = "0.40.0"
+bevy_panorbit_camera = { version = "0.35.0", features = ["bevy_egui"] }
 
 [features]
 default = []
-writer = ["dep:msdfgen", "dep:clap", "dep:env_logger", "dep:log", "dep:svg"]
+writer = ["dep:msdfgen", "dep:clap", "dep:env_logger", "dep:log", "dep:svg", "dep:ttf-parser-msdf"]

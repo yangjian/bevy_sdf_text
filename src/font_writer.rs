@@ -11,6 +11,7 @@ use msdfgen::{
     Vector2, MID_VALUE,
 };
 use owned_ttf_parser::{Face, GlyphId};
+use ttf_parser_msdf as msdf_ttf;
 
 use crate::FontMetrics;
 
@@ -43,6 +44,8 @@ impl SdfAtlas {
         chars: Vec<char>,
     ) -> Result<Self> {
         let face = Face::parse(font_data, 0)?;
+        let msdf_face =
+            msdf_ttf::Face::parse(font_data, 0).map_err(|_| anyhow!("parse font face for msdf"))?;
 
         let mut gen_config = MsdfGeneratorConfig::default();
         gen_config.set_overlap_support(true);
@@ -78,7 +81,7 @@ impl SdfAtlas {
             let grid_x = (i as u32) % grid_width;
             let grid_y = (i as u32) / grid_width;
 
-            let mut shape = match face.glyph_shape(glyph_id) {
+            let mut shape = match msdf_face.glyph_shape(msdf_ttf::GlyphId(glyph_id.0)) {
                 Some(o) => o,
                 None => {
                     log::warn!("no glyph shape for char {char:?}");
