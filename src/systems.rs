@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use bevy::ecs::change_detection::Tick;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::log;
 use bevy::prelude::*;
@@ -31,6 +32,7 @@ impl SdfTextBackground {
 #[derive(Component, Clone, Debug)]
 pub(crate) struct SdfTextState {
     layout_output: LayoutOutput,
+    text_change_tick: Tick,
 }
 
 #[derive(Component, Clone, Default, Debug, Reflect)]
@@ -51,7 +53,7 @@ pub struct SdfFontAtlasReady(pub AssetId<SdfFont>);
 
 /// placeholder system which runs before sdf text mesh update
 /// external users can use it to make sure text mesh is updated in same frame
-pub fn before_sdf_update_text_mesh() {
+pub fn sdf_text_system_first() {
     // nothing
 }
 
@@ -60,10 +62,13 @@ pub(crate) fn update_text_mesh(
     font_atlas_res: Res<SdfFontAtlasRes>,
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut text_query: Query<(Entity, Ref<SdfText>), Or<(Without<SdfTextState>, Changed<SdfText>)>>,
+    mut text_query: Query<
+        (Entity, Ref<SdfText>, Option<&SdfTextState>),
+        Or<(Without<SdfTextState>, Changed<SdfText>)>,
+    >,
     mut queue: Local<HashSet<Entity>>,
 ) {
-    let mut handle_text = |entity: Entity, text: &SdfText| -> bool {
+    let mut handle_text = |entity: Entity, text: &Ref<SdfText>| -> bool {
         let text_atlases: Vec<&SdfFontAtlas> = text
             .sections
             .iter()
@@ -125,13 +130,20 @@ pub(crate) fn update_text_mesh(
             .entity(entity)
             .remove::<Children>()
             .add_child(child_id)
-            .insert(SdfTextState { layout_output })
+            .insert(SdfTextState {
+                layout_output,
+                text_change_tick: text.last_changed(),
+            })
             .insert(SdfTextBackgroundNodeInfo::default());
 
         true
     };
 
-    for (entity, text) in &mut text_query {
+    for (entity, text, state) in &mut text_query {
+        if state.is_some_and(|state| state.text_change_tick == text.last_changed()) {
+            continue;
+        }
+
         if !text.is_changed() && !queue.remove(&entity) {
             continue;
         }

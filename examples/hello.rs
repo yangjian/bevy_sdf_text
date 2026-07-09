@@ -107,7 +107,7 @@ fn setup(
                 alignment: SdfTextAlignment::Left,
                 ..Default::default()
             },
-            anchor.clone(),
+            *anchor,
             SdfTextBackground {
                 padding: Vec2::new(0.4, 0.2),
                 color: css::INDIGO.into(),

@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use crate::{SdfFont, SdfFontLoader};
 
 use super::font_atlas::*;
+use super::immediate::*;
 use super::material::*;
 use super::systems::*;
 use super::text::*;
@@ -39,9 +40,14 @@ impl Plugin for SdfTextPlugin {
             .add_plugins(MaterialPlugin::<SdfRectMaterial>::default())
             .add_systems(First, setup_font_atlas)
             .add_systems(
-                PreUpdate,
-                (before_sdf_update_text_mesh, update_text_mesh).chain(),
+                Update,
+                (
+                    sdf_text_system_first,
+                    update_text_mesh,
+                    (update_text_anchor, update_text_background),
+                )
+                    .chain(),
             )
-            .add_systems(Update, (update_text_anchor, update_text_background));
+            .add_systems(Last, hide_stale_text_painter_entities);
     }
 }
