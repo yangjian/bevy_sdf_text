@@ -48,6 +48,10 @@ impl Material for SdfTextMaterial {
     fn alpha_mode(&self) -> AlphaMode {
         self.alpha_mode
     }
+
+    fn depth_bias(&self) -> f32 {
+        1e3
+    }
 }
 
 #[derive(Clone, Copy, Debug, ShaderType)]
@@ -76,6 +80,6 @@ impl Material for SdfRectMaterial {
     }
 
     fn depth_bias(&self) -> f32 {
-        -1e-3
+        -1e3
     }
 }
