@@ -28,8 +28,8 @@ fn setup(
     let roboto_font = assets.load("fonts/Roboto-Regular.sdfb");
     let roboto_bold_font = assets.load("fonts/Roboto-Bold.sdfb");
 
-    commands.spawn(SdfTextBundle {
-        text: SdfText {
+    commands.spawn((
+        SdfText {
             sections: vec![
                 SdfTextSection {
                     value: "Hello, World! VAR\n".into(),
@@ -51,8 +51,8 @@ fn setup(
             alignment: SdfTextAlignment::Right,
             bounds: Some((16.0, f32::INFINITY)),
         },
-        text_anchor: SdfTextAnchor::BottomRight,
-        text_background: SdfTextBackground {
+        SdfTextAnchor::BottomRight,
+        SdfTextBackground {
             padding: Vec2::new(0.5, 0.5),
             color: Color::BLACK,
             border_radius: 0.5,
@@ -60,8 +60,7 @@ fn setup(
             border_color: Color::WHITE,
             ..Default::default()
         },
-        ..Default::default()
-    });
+    ));
 
     let dot_mesh = meshes.add(Sphere::new(0.05));
     let dot_material = std_materials.add(StandardMaterial {
@@ -95,8 +94,8 @@ fn setup(
         ][i % 4]
             .clone();
         let alpha = ((i % 4) as f32 + 0.5) / 4.0;
-        commands.spawn(SdfTextBundle {
-            text: SdfText {
+        commands.spawn((
+            SdfText {
                 sections: vec![SdfTextSection {
                     value: format!("Hello, World! {anchor:?}"),
                     style: SdfTextStyle {
@@ -108,8 +107,8 @@ fn setup(
                 alignment: SdfTextAlignment::Left,
                 ..Default::default()
             },
-            text_anchor: anchor.clone(),
-            text_background: SdfTextBackground {
+            anchor.clone(),
+            SdfTextBackground {
                 padding: Vec2::new(0.4, 0.2),
                 color: css::INDIGO.into(),
                 border_radius: 0.4,
@@ -117,9 +116,8 @@ fn setup(
                 border_color: css::DARK_GREEN.with_alpha(alpha).into(),
                 ..Default::default()
             },
-            transform: Transform::from_xyz(0.0, -2.5 * (i + 1) as f32, 0.0),
-            ..default()
-        });
+            Transform::from_xyz(0.0, -2.5 * (i + 1) as f32, 0.0),
+        ));
 
         commands.spawn((
             Mesh3d(dot_mesh.clone()),

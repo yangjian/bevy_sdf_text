@@ -1,4 +1,3 @@
-mod bundle;
 mod error;
 mod font;
 mod font_atlas;
@@ -7,9 +6,9 @@ mod geometry;
 mod layout;
 mod material;
 mod plugin;
+mod systems;
 mod text;
 
-pub use bundle::*;
 pub use error::*;
 pub use font::*;
 pub use font_atlas::*;
@@ -18,6 +17,7 @@ pub use geometry::*;
 pub use layout::*;
 pub use material::*;
 pub use plugin::*;
+pub use systems::*;
 pub use text::*;
 
 #[cfg(feature = "writer")]

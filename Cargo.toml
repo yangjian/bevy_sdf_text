@@ -57,4 +57,11 @@ bevy_panorbit_camera = { version = "0.35.0", features = ["bevy_egui"] }
 
 [features]
 default = []
-writer = ["dep:msdfgen", "dep:clap", "dep:env_logger", "dep:log", "dep:svg", "dep:ttf-parser-msdf"]
+writer = [
+    "dep:msdfgen",
+    "dep:clap",
+    "dep:env_logger",
+    "dep:log",
+    "dep:svg",
+    "dep:ttf-parser-msdf",
+]

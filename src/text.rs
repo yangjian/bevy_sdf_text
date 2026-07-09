@@ -2,10 +2,17 @@ use bevy::prelude::*;
 use glyph_brush_layout::HorizontalAlign;
 use serde::{Deserialize, Serialize};
 
-use crate::SdfFont;
+use crate::{SdfFont, SdfTextBackground};
 
 #[derive(Component, Clone, Debug, Reflect)]
 #[reflect(Component, Default)]
+#[require(
+    Transform,
+    GlobalTransform,
+    Visibility,
+    SdfTextAnchor,
+    SdfTextBackground
+)]
 pub struct SdfText {
     pub sections: Vec<SdfTextSection>,
     /// The text's internal alignment. Should not affect its position within a container.
@@ -78,7 +85,7 @@ impl Default for SdfTextStyle {
 }
 
 /// Describes horizontal alignment preference for positioning & bounds.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
 #[reflect(Serialize, Deserialize)]
 pub enum SdfTextAlignment {
     /// Leftmost character is immediately to the right of the render position.<br/>
@@ -105,7 +112,7 @@ impl From<SdfTextAlignment> for HorizontalAlign {
 
 /// How a text is positioned relative to its [`Transform`](bevy_transform::components::Transform).
 /// It defaults to `SdfTextAnchor::BottomLeft`.
-#[derive(Component, Debug, Clone, Default, Reflect)]
+#[derive(Clone, Copy, Debug, Default, Component, Reflect)]
 pub enum SdfTextAnchor {
     #[default]
     BottomLeft,

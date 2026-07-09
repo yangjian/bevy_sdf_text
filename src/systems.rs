@@ -8,33 +8,6 @@ use crate::{build_sdf_text_mesh, layout::*};
 use crate::{PlaneWithUV, SdfRectMaterial, SdfTextMaterial};
 use crate::{SdfFont, SdfFontAtlas, SdfFontAtlasRes, SdfText, SdfTextAnchor};
 
-#[derive(Bundle, Clone, Debug, Default)]
-pub struct SdfTextBundle {
-    /// Text mesh configuration
-    pub text: SdfText,
-
-    /// How the text is positioned relative to its transform.
-    pub text_anchor: SdfTextAnchor,
-
-    /// Text background.
-    pub text_background: SdfTextBackground,
-
-    /// The visibility of the entity.
-    pub visibility: Visibility,
-
-    /// The inherited visibility of the entity.
-    pub inherited_visibility: InheritedVisibility,
-
-    /// The view visibility of the entity.
-    pub view_visibility: ViewVisibility,
-
-    /// The transform of the entity.
-    pub transform: Transform,
-
-    /// The global transform of the entity.
-    pub global_transform: GlobalTransform,
-}
-
 #[derive(Component, Clone, Default, Debug, PartialEq, Reflect)]
 pub struct SdfTextBackground {
     pub padding: Vec2,

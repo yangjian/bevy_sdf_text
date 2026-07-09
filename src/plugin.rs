@@ -3,9 +3,9 @@ use bevy::prelude::*;
 
 use crate::{SdfFont, SdfFontLoader};
 
-use super::bundle::*;
 use super::font_atlas::*;
 use super::material::*;
+use super::systems::*;
 use super::text::*;
 
 #[derive(Default)]
