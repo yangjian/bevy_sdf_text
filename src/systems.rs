@@ -4,6 +4,7 @@ use bevy::ecs::change_detection::Tick;
 use bevy::light::{NotShadowCaster, NotShadowReceiver};
 use bevy::log;
 use bevy::prelude::*;
+use bevy::render::batching::NoAutomaticBatching;
 
 use crate::{build_sdf_text_mesh, layout::*};
 use crate::{PlaneWithUV, SdfRectMaterial, SdfTextMaterial};
@@ -54,6 +55,13 @@ pub struct SdfFontAtlasReady(pub AssetId<SdfFont>);
 /// placeholder system which runs before sdf text mesh update
 /// external users can use it to make sure text mesh is updated in same frame
 pub fn sdf_text_system_first() {
+    // nothing
+}
+
+/// Placeholder that runs after mesh/anchor/background updates (and deferred
+/// apply). External systems can `.after(sdf_text_system_last)` to read
+/// finished SDF text children in the same frame.
+pub fn sdf_text_system_last() {
     // nothing
 }
 
@@ -118,6 +126,7 @@ pub(crate) fn update_text_mesh(
                         Name::new("SdfTextSection"),
                         Mesh3d(meshes.add(mesh)),
                         MeshMaterial3d(atlas.material.clone()),
+                        NoAutomaticBatching,
                         NotShadowCaster,
                         NotShadowReceiver,
                     ));
@@ -144,7 +153,11 @@ pub(crate) fn update_text_mesh(
             continue;
         }
 
-        if !text.is_changed() && !queue.remove(&entity) {
+        // Always (re)build when mesh state is missing. Relying only on
+        // Changed<SdfText> can skip freshly spawned labels after the add
+        // tick advances, leaving them without a mesh or stuck in a queue.
+        let needs_update = state.is_none() || text.is_changed() || queue.remove(&entity);
+        if !needs_update {
             continue;
         }
 

@@ -45,6 +45,7 @@ impl Plugin for SdfTextPlugin {
                     sdf_text_system_first,
                     update_text_mesh,
                     (update_text_anchor, update_text_background),
+                    sdf_text_system_last,
                 )
                     .chain(),
             )
